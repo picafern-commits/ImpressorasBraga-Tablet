@@ -24,27 +24,21 @@ const passos = [
 
 let stockGlobal = [];
 
-// =========================
 // NAVEGAÇÃO
-// =========================
 window.mostrarPagina = function(id) {
   document.querySelectorAll(".page").forEach(p => p.classList.add("hidden"));
-
   const alvo = document.getElementById(id);
   if (alvo) alvo.classList.remove("hidden");
 
   document.querySelectorAll(".side-nav button").forEach(b => b.classList.remove("active"));
   const btn = Array.from(document.querySelectorAll(".side-nav button"))
     .find(b => (b.getAttribute("onclick") || "").includes(`'${id}'`));
-
   if (btn) btn.classList.add("active");
 
   if (id === "computadores") carregarChecklist();
 };
 
-// =========================
 // DARK MODE
-// =========================
 function initDarkMode() {
   const sw = document.getElementById("darkSwitch");
   if (!sw) return;
@@ -59,9 +53,7 @@ function initDarkMode() {
   });
 }
 
-// =========================
-// TONERS
-// =========================
+// IMPRESSORAS
 async function gerarID() {
   const ref = db.collection("config").doc("contador");
 
@@ -147,28 +139,12 @@ function renderStock(lista) {
   });
 }
 
-window.filtrar = function() {
-  const termo = (document.getElementById("search")?.value || "").toLowerCase().trim();
-
-  if (!termo) {
-    renderStock(stockGlobal);
-    return;
-  }
-
-  const filtrado = stockGlobal.filter(t =>
-    (t.localizacao || "").toLowerCase().includes(termo)
-  );
-
-  renderStock(filtrado);
-};
-
 function initStock() {
   db.collection("stock").orderBy("created", "desc").onSnapshot((snap) => {
     const count = document.getElementById("countStock");
     if (count) count.innerText = snap.size;
 
     stockGlobal = [];
-
     snap.forEach((doc) => {
       stockGlobal.push({
         ...doc.data(),
@@ -204,9 +180,7 @@ function initHistorico() {
   });
 }
 
-// =========================
 // COMPUTADORES
-// =========================
 function carregarChecklist() {
   const el = document.getElementById("checklist");
   if (!el) return;
@@ -285,14 +259,226 @@ function initPCs() {
   });
 }
 
-// =========================
+// MANUTENÇÃO
+window.guardarManutencao = async function() {
+  const equipamento = document.getElementById("manutEquipamento").value.trim();
+  const local = document.getElementById("manutLocal").value.trim();
+  const descricao = document.getElementById("manutDescricao").value.trim();
+  const data = document.getElementById("manutData").value || "Sem Data";
+
+  if (!equipamento || !descricao) {
+    alert("Preenche equipamento e descrição.");
+    return;
+  }
+
+  await db.collection("manutencoes").add({
+    equipamento,
+    local,
+    descricao,
+    data,
+    created: new Date()
+  });
+
+  document.getElementById("manutEquipamento").value = "";
+  document.getElementById("manutLocal").value = "";
+  document.getElementById("manutDescricao").value = "";
+  document.getElementById("manutData").value = "";
+};
+
+window.apagarManutencao = async function(docId) {
+  if (!confirm("Apagar manutenção?")) return;
+  await db.collection("manutencoes").doc(docId).delete();
+};
+
+function initManutencao() {
+  db.collection("manutencoes").orderBy("created", "desc").onSnapshot((snap) => {
+    const lista = document.getElementById("listaManutencao");
+    const count = document.getElementById("countManut");
+    if (count) count.innerText = snap.size;
+    if (!lista) return;
+
+    lista.innerHTML = "";
+    snap.forEach((doc) => {
+      const d = doc.data();
+      lista.innerHTML += `
+        <div class="card">
+          <strong>${d.equipamento}</strong><br>
+          <small>${d.local || ""}</small>
+          <small>📅 ${d.data || ""}</small>
+          <div style="margin-top:10px">${d.descricao || ""}</div>
+          <button class="delete-btn" onclick="apagarManutencao('${doc.id}')">❌ Apagar</button>
+        </div>
+      `;
+    });
+  });
+}
+
+// PISTOLAS
+window.guardarPistola = async function() {
+  const nome = document.getElementById("pistolaNome").value.trim();
+  const estado = document.getElementById("pistolaEstado").value;
+  const obs = document.getElementById("pistolaObs").value.trim();
+
+  if (!nome || !estado) {
+    alert("Preenche nome e estado.");
+    return;
+  }
+
+  await db.collection("pistolas").add({
+    nome,
+    estado,
+    obs,
+    created: new Date()
+  });
+
+  document.getElementById("pistolaNome").value = "";
+  document.getElementById("pistolaEstado").value = "";
+  document.getElementById("pistolaObs").value = "";
+};
+
+window.apagarPistola = async function(docId) {
+  if (!confirm("Apagar pistola?")) return;
+  await db.collection("pistolas").doc(docId).delete();
+};
+
+function initPistolas() {
+  db.collection("pistolas").orderBy("created", "desc").onSnapshot((snap) => {
+    const lista = document.getElementById("listaPistolas");
+    const count = document.getElementById("countPistolas");
+    if (count) count.innerText = snap.size;
+    if (!lista) return;
+
+    lista.innerHTML = "";
+    snap.forEach((doc) => {
+      const d = doc.data();
+      lista.innerHTML += `
+        <div class="card">
+          <strong>${d.nome}</strong><br>
+          <small>${d.estado}</small>
+          <small>${d.obs || ""}</small>
+          <button class="delete-btn" onclick="apagarPistola('${doc.id}')">❌ Apagar</button>
+        </div>
+      `;
+    });
+  });
+}
+
+// PORTAS
+window.guardarPorta = async function() {
+  const local = document.getElementById("portaLocal").value.trim();
+  const numero = document.getElementById("portaNumero").value.trim();
+  const equipamento = document.getElementById("portaEquipamento").value.trim();
+  const obs = document.getElementById("portaObs").value.trim();
+
+  if (!local || !numero) {
+    alert("Preenche local e porta.");
+    return;
+  }
+
+  await db.collection("portasRede").add({
+    local,
+    numero,
+    equipamento,
+    obs,
+    created: new Date()
+  });
+
+  document.getElementById("portaLocal").value = "";
+  document.getElementById("portaNumero").value = "";
+  document.getElementById("portaEquipamento").value = "";
+  document.getElementById("portaObs").value = "";
+};
+
+window.apagarPorta = async function(docId) {
+  if (!confirm("Apagar porta?")) return;
+  await db.collection("portasRede").doc(docId).delete();
+};
+
+function initPortas() {
+  db.collection("portasRede").orderBy("created", "desc").onSnapshot((snap) => {
+    const lista = document.getElementById("listaPortas");
+    if (!lista) return;
+
+    lista.innerHTML = "";
+    snap.forEach((doc) => {
+      const d = doc.data();
+      lista.innerHTML += `
+        <div class="card">
+          <strong>${d.local}</strong><br>
+          <small>Porta: ${d.numero}</small>
+          <small>${d.equipamento || ""}</small>
+          <small>${d.obs || ""}</small>
+          <button class="delete-btn" onclick="apagarPorta('${doc.id}')">❌ Apagar</button>
+        </div>
+      `;
+    });
+  });
+}
+
+// USERS
+window.guardarUser = async function() {
+  const nome = document.getElementById("userNome").value.trim();
+  const login = document.getElementById("userLogin").value.trim();
+  const departamento = document.getElementById("userDepartamento").value.trim();
+  const estado = document.getElementById("userEstado").value;
+
+  if (!nome || !login) {
+    alert("Preenche nome e login.");
+    return;
+  }
+
+  await db.collection("usersApp").add({
+    nome,
+    login,
+    departamento,
+    estado,
+    created: new Date()
+  });
+
+  document.getElementById("userNome").value = "";
+  document.getElementById("userLogin").value = "";
+  document.getElementById("userDepartamento").value = "";
+  document.getElementById("userEstado").value = "";
+};
+
+window.apagarUser = async function(docId) {
+  if (!confirm("Apagar user?")) return;
+  await db.collection("usersApp").doc(docId).delete();
+};
+
+function initUsers() {
+  db.collection("usersApp").orderBy("created", "desc").onSnapshot((snap) => {
+    const lista = document.getElementById("listaUsers");
+    const count = document.getElementById("countUsers");
+    if (count) count.innerText = snap.size;
+    if (!lista) return;
+
+    lista.innerHTML = "";
+    snap.forEach((doc) => {
+      const d = doc.data();
+      lista.innerHTML += `
+        <div class="card">
+          <strong>${d.nome}</strong><br>
+          <small>${d.login}</small>
+          <small>${d.departamento || ""}</small>
+          <small>${d.estado || ""}</small>
+          <button class="delete-btn" onclick="apagarUser('${doc.id}')">❌ Apagar</button>
+        </div>
+      `;
+    });
+  });
+}
+
 // INIT
-// =========================
 window.onload = function() {
   carregarChecklist();
   initDarkMode();
   initStock();
   initHistorico();
   initPCs();
+  initManutencao();
+  initPistolas();
+  initPortas();
+  initUsers();
   mostrarPagina("dashboard");
 };
