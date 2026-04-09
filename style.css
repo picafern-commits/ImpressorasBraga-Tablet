@@ -44,7 +44,6 @@ img {
   height: auto;
 }
 
-/* LAYOUT */
 .app-shell {
   display: grid;
   grid-template-columns: 290px 1fr;
@@ -79,7 +78,6 @@ img {
   background: var(--bg);
 }
 
-/* SIDEBAR */
 .brand {
   margin-bottom: 20px;
 }
@@ -119,7 +117,6 @@ img {
   color: #93c5fd;
 }
 
-/* PÁGINAS */
 .page {
   margin: 0;
   padding: 0;
@@ -129,7 +126,6 @@ img {
   display: none !important;
 }
 
-/* DASHBOARD */
 .dashboard-logo {
   width: 220px;
   max-width: 100%;
@@ -175,7 +171,6 @@ h2 {
   font-size: 22px;
 }
 
-/* PAINÉIS */
 .panel,
 .card,
 .check-item {
@@ -220,7 +215,6 @@ h2 {
   min-height: auto;
 }
 
-/* FORMULÁRIOS */
 input,
 select,
 button,
@@ -264,7 +258,6 @@ button.secondary,
   border-radius: 12px;
 }
 
-/* CHECKLIST */
 .checklist-list {
   display: grid;
   gap: 10px;
@@ -291,7 +284,6 @@ button.secondary,
   font-weight: 700;
 }
 
-/* TOGGLE */
 .toggle-row {
   display: flex;
   justify-content: space-between;
@@ -306,7 +298,6 @@ button.secondary,
   margin: 0;
 }
 
-/* RESPONSIVO */
 @media (min-width: 1200px) {
   .cards-list {
     grid-template-columns: repeat(3, minmax(0, 1fr));
