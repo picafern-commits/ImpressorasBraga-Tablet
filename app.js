@@ -22,6 +22,11 @@ const passos = [
   "Criar novo user"
 ];
 
+let stockGlobal = [];
+
+// =========================
+// NAVEGAÇÃO
+// =========================
 window.mostrarPagina = function(id) {
   document.querySelectorAll(".page").forEach(p => p.classList.add("hidden"));
 
@@ -31,27 +36,32 @@ window.mostrarPagina = function(id) {
   document.querySelectorAll(".side-nav button").forEach(b => b.classList.remove("active"));
   const btn = Array.from(document.querySelectorAll(".side-nav button"))
     .find(b => (b.getAttribute("onclick") || "").includes(`'${id}'`));
+
   if (btn) btn.classList.add("active");
 
   if (id === "computadores") carregarChecklist();
 };
 
-function carregarChecklist() {
-  const el = document.getElementById("checklist");
-  if (!el) return;
+// =========================
+// DARK MODE
+// =========================
+function initDarkMode() {
+  const sw = document.getElementById("darkSwitch");
+  if (!sw) return;
 
-  let html = "";
-  passos.forEach((passo, i) => {
-    html += `
-      <label class="check-item">
-        <input type="checkbox" id="p${i}">
-        <span>${passo}</span>
-      </label>
-    `;
+  const ativo = localStorage.getItem("modo") === "dark";
+  document.body.classList.toggle("dark", ativo);
+  sw.checked = ativo;
+
+  sw.addEventListener("change", function() {
+    document.body.classList.toggle("dark", this.checked);
+    localStorage.setItem("modo", this.checked ? "dark" : "light");
   });
-  el.innerHTML = html;
 }
 
+// =========================
+// TONERS
+// =========================
 async function gerarID() {
   const ref = db.collection("config").doc("contador");
 
@@ -114,6 +124,106 @@ window.apagarHistorico = async function(docId) {
   await db.collection("historico").doc(docId).delete();
 };
 
+function renderStock(lista) {
+  const el = document.getElementById("listaStock");
+  if (!el) return;
+
+  el.innerHTML = "";
+
+  lista.forEach(t => {
+    el.innerHTML += `
+      <div class="card">
+        <div class="card-top">
+          <div>
+            <strong>${t.idInterno || ""}</strong><br>
+            ${t.equipamento || ""} - ${t.cor || ""}<br>
+            <small>${t.localizacao || ""}</small>
+            <small>${t.data || ""}</small>
+          </div>
+          <input class="inline-check" type="checkbox" onchange="usar('${t.idDoc}')">
+        </div>
+      </div>
+    `;
+  });
+}
+
+window.filtrar = function() {
+  const termo = (document.getElementById("search")?.value || "").toLowerCase().trim();
+
+  if (!termo) {
+    renderStock(stockGlobal);
+    return;
+  }
+
+  const filtrado = stockGlobal.filter(t =>
+    (t.localizacao || "").toLowerCase().includes(termo)
+  );
+
+  renderStock(filtrado);
+};
+
+function initStock() {
+  db.collection("stock").orderBy("created", "desc").onSnapshot((snap) => {
+    const count = document.getElementById("countStock");
+    if (count) count.innerText = snap.size;
+
+    stockGlobal = [];
+
+    snap.forEach((doc) => {
+      stockGlobal.push({
+        ...doc.data(),
+        idDoc: doc.id
+      });
+    });
+
+    renderStock(stockGlobal);
+  });
+}
+
+function initHistorico() {
+  db.collection("historico").orderBy("created", "desc").onSnapshot((snap) => {
+    const lista = document.getElementById("listaHistorico");
+    const count = document.getElementById("countUsados");
+    if (count) count.innerText = snap.size;
+    if (!lista) return;
+
+    lista.innerHTML = "";
+
+    snap.forEach((doc) => {
+      const t = doc.data();
+      lista.innerHTML += `
+        <div class="card">
+          <strong>${t.idInterno || ""}</strong><br>
+          ${t.equipamento || ""} - ${t.cor || ""}<br>
+          <small>${t.localizacao || ""}</small>
+          <small>${t.data || ""}</small>
+          <button class="delete-btn" onclick="apagarHistorico('${doc.id}')">❌ Apagar</button>
+        </div>
+      `;
+    });
+  });
+}
+
+// =========================
+// COMPUTADORES
+// =========================
+function carregarChecklist() {
+  const el = document.getElementById("checklist");
+  if (!el) return;
+
+  let html = "";
+  passos.forEach((passo, i) => {
+    html += `
+      <label class="check-item">
+        <input type="checkbox" id="p${i}">
+        <span>${passo}</span>
+      </label>
+    `;
+  });
+
+  el.innerHTML = html;
+}
+
 window.guardarPC = async function() {
   const nome = document.getElementById("nomePC").value.trim();
   const data = document.getElementById("dataPC").value || "Sem Data";
@@ -146,72 +256,6 @@ window.apagarPC = async function(docId) {
   await db.collection("pcs").doc(docId).delete();
 };
 
-function initDarkMode() {
-  const sw = document.getElementById("darkSwitch");
-  if (!sw) return;
-
-  const ativo = localStorage.getItem("modo") === "dark";
-  document.body.classList.toggle("dark", ativo);
-  sw.checked = ativo;
-
-  sw.addEventListener("change", function() {
-    document.body.classList.toggle("dark", this.checked);
-    localStorage.setItem("modo", this.checked ? "dark" : "light");
-  });
-}
-
-function initStock() {
-  db.collection("stock").orderBy("created", "desc").onSnapshot((snap) => {
-    const lista = document.getElementById("listaStock");
-    const count = document.getElementById("countStock");
-    if (count) count.innerText = snap.size;
-    if (!lista) return;
-
-    lista.innerHTML = "";
-
-    snap.forEach((doc) => {
-      const t = doc.data();
-      lista.innerHTML += `
-        <div class="card">
-          <div class="card-top">
-            <div>
-              <strong>${t.idInterno || ""}</strong><br>
-              ${t.equipamento || ""} - ${t.cor || ""}<br>
-              <small>${t.localizacao || ""}</small>
-              <small>${t.data || ""}</small>
-            </div>
-            <input class="inline-check" type="checkbox" onchange="usar('${doc.id}')">
-          </div>
-        </div>
-      `;
-    });
-  });
-}
-
-function initHistorico() {
-  db.collection("historico").orderBy("created", "desc").onSnapshot((snap) => {
-    const lista = document.getElementById("listaHistorico");
-    const count = document.getElementById("countUsados");
-    if (count) count.innerText = snap.size;
-    if (!lista) return;
-
-    lista.innerHTML = "";
-
-    snap.forEach((doc) => {
-      const t = doc.data();
-      lista.innerHTML += `
-        <div class="card">
-          <strong>${t.idInterno || ""}</strong><br>
-          ${t.equipamento || ""} - ${t.cor || ""}<br>
-          <small>${t.localizacao || ""}</small>
-          <small>${t.data || ""}</small>
-          <button class="delete-btn" onclick="apagarHistorico('${doc.id}')">❌ Apagar</button>
-        </div>
-      `;
-    });
-  });
-}
-
 function initPCs() {
   db.collection("pcs").orderBy("created", "desc").onSnapshot((snap) => {
     const lista = document.getElementById("listaPC");
@@ -241,6 +285,9 @@ function initPCs() {
   });
 }
 
+// =========================
+// INIT
+// =========================
 window.onload = function() {
   carregarChecklist();
   initDarkMode();
