@@ -13,9 +13,6 @@ let stockGlobal = [];
 let historicoGlobal = [];
 let pcsGlobal = [];
 let manutencoesGlobal = [];
-let tonerInfoState = {};
-let tonerAlertState = {};
-let unsubscribePrintersRealtime = null;
 
 function el(id) {
   return document.getElementById(id);
@@ -1385,69 +1382,6 @@ function atualizarContadoresManutencao() {
   setText("countManutResolvidos", manutencoesGlobal.filter(i => i.estado === "Resolvido").length);
 }
 
-
-function normalizePrinterTelemetry(raw = {}, fallbackIp = "") {
-  const colorMap = {
-    black: { key: "black", label: "Preto" },
-    cyan: { key: "cyan", label: "Ciano" },
-    magenta: { key: "magenta", label: "Magenta" },
-    yellow: { key: "yellow", label: "Amarelo" }
-  };
-
-  const colors = [];
-  const toner = raw.toner && typeof raw.toner === "object" ? raw.toner : {};
-  Object.keys(toner).forEach((key) => {
-    const numeric = Number(toner[key]);
-    if (!Number.isFinite(numeric)) return;
-    const map = colorMap[key.toLowerCase()] || { key: key.toLowerCase(), label: key };
-    colors.push({ key: map.key, label: map.label, percent: Math.max(0, Math.min(100, Math.round(numeric))) });
-  });
-
-  const residueValue = raw.residue && typeof raw.residue === "object"
-    ? Number(raw.residue.percent)
-    : Number(raw.residue ?? raw.waste);
-
-  const residue = Number.isFinite(residueValue)
-    ? { key: "waste", label: (raw.residue && raw.residue.label) || "Resíduo", percent: Math.max(0, Math.min(100, Math.round(residueValue))) }
-    : null;
-
-  const monoPercent = Number(raw.percent);
-  const percent = Number.isFinite(monoPercent)
-    ? Math.max(0, Math.min(100, Math.round(monoPercent)))
-    : (colors.length === 1 && colors[0].key === "black" ? colors[0].percent : null);
-
-  return {
-    ip: raw.ip || fallbackIp,
-    colors,
-    residue,
-    percent
-  };
-}
-
-function startPrintersRealtime() {
-  if (unsubscribePrintersRealtime) return;
-
-  unsubscribePrintersRealtime = db.collection("printers").onSnapshot((snap) => {
-    const nextState = {};
-
-    snap.forEach((doc) => {
-      const raw = doc.data() || {};
-      const ip = raw.ip || doc.id;
-      if (!ip) return;
-      const info = normalizePrinterTelemetry(raw, ip);
-      nextState[ip] = info;
-      maybeNotifyCriticalSupply(ip, info);
-    });
-
-    tonerInfoState = nextState;
-
-    renderDashboardCards();
-    renderImpressoras();
-  }, (error) => {
-    console.error("Erro ao ler printers do Firebase:", error);
-  });
-}
-
 function renderDashboardCards(items) {
   const lista = el("listaDashboardStock");
   if (!lista) return;
@@ -2040,8 +1974,6 @@ function maybeNotifyCriticalSupply(ip, info) {
 
 async function obterTonerInfo(ip) {
   try {
-    if (tonerInfoState[ip]) return tonerInfoState[ip];
-
     if (!window.electronAPI || !window.electronAPI.getTonerSNMP) return null;
     const resposta = await window.electronAPI.getTonerSNMP(ip);
 
@@ -2139,10 +2071,10 @@ function renderImpressoras(lista = impressorasData) {
         <td>${item.serie}</td>
         <td>${item.armazem}</td>
         <td>${item.localizacao}</td>
-        <td>${item.ip}</td>
+        <td><a href="http://${item.ip}" target="_blank" rel="noopener noreferrer">${item.ip}</a></td>
         <td>${badgeEstado(estado)}</td>
         <td>
-          <div id="${tonerId}">${gerarHTMLToners(tonerInfoState[item.ip] || null)}</div>
+          <div id="${tonerId}">${gerarHTMLBarraToner(null)}</div>
           <div class="table-actions" style="margin-top:8px;">
             <button class="action-btn ip" onclick="abrirIP('${item.ip}')">Abrir IP</button>
             <button class="action-btn manut" onclick='abrirManutencaoDireta(${JSON.stringify(item)})'>Manutenção</button>
@@ -2470,13 +2402,10 @@ window.addEventListener("DOMContentLoaded", () => {
     el("manutencaoIP").addEventListener("change", sincronizarCamposImpressora);
   }
 
-  startPrintersRealtime();
-
   const estaNaPaginaImpressoras = !!el("impressorasTableBody");
   const estaNoDashboard = !!el("listaDashboardStock") || !!el("searchDashboard");
-  const podeLerLocalmente = !!(window.electronAPI && (window.electronAPI.getTonerSNMP || window.electronAPI.getPrinterHTML));
 
-  if ((estaNaPaginaImpressoras || estaNoDashboard) && podeLerLocalmente) {
+  if (estaNaPaginaImpressoras || estaNoDashboard) {
     setTimeout(() => {
       testarTodasAsImpressoras();
     }, 600);
@@ -2486,4 +2415,171 @@ window.addEventListener("DOMContentLoaded", () => {
     }, 60000);
   }
 
+});
+
+/* =========================
+   TABLET / FIREBASE COMPLETO
+========================= */
+const printerFirebaseState = {};
+
+function normalizePrinterColorsFromFirebase(printerDoc) {
+  const toner = printerDoc && printerDoc.toner ? printerDoc.toner : {};
+  const colors = [];
+
+  const colorMap = [
+    ["black", "Preto", "black"],
+    ["cyan", "Ciano", "cyan"],
+    ["magenta", "Magenta", "magenta"],
+    ["yellow", "Amarelo", "yellow"]
+  ];
+
+  colorMap.forEach(([field, label, key]) => {
+    const value = toner[field];
+    if (typeof value === "number") {
+      colors.push({ key, label, percent: Math.max(0, Math.min(100, Math.round(value))) });
+    }
+  });
+
+  return colors;
+}
+
+function normalizePrinterResidueFromFirebase(printerDoc) {
+  const wasteValue = printerDoc && typeof printerDoc.waste === "number"
+    ? printerDoc.waste
+    : (printerDoc && typeof printerDoc.residue === "number" ? printerDoc.residue : null);
+
+  if (typeof wasteValue !== "number") return null;
+
+  return {
+    key: "waste",
+    label: "Resíduo",
+    percent: Math.max(0, Math.min(100, Math.round(wasteValue)))
+  };
+}
+
+function mapFirebasePrinterInfo(printerDoc) {
+  const colors = normalizePrinterColorsFromFirebase(printerDoc);
+  const residue = normalizePrinterResidueFromFirebase(printerDoc);
+  let percent = null;
+
+  if (colors.length === 1 && colors[0].key === "black") {
+    percent = colors[0].percent;
+  } else if (!colors.length && printerDoc && typeof printerDoc.percent === "number") {
+    percent = Math.max(0, Math.min(100, Math.round(printerDoc.percent)));
+  }
+
+  return { colors, residue, percent };
+}
+
+function bindPrintersFirebaseRealtime() {
+  if (!db || !db.collection) return;
+
+  db.collection("printers").onSnapshot((snap) => {
+    snap.forEach((doc) => {
+      const data = doc.data() || {};
+      const ip = data.ip || doc.id;
+      if (!ip) return;
+
+      const mapped = mapFirebasePrinterInfo(data);
+      printerFirebaseState[ip] = data;
+      tonerInfoState[ip] = mapped;
+      maybeNotifyCriticalSupply(ip, mapped);
+    });
+
+    renderDashboardCards();
+    renderImpressoras();
+
+    const dashboardHasSearch = !!el("searchDashboard");
+    if (dashboardHasSearch && normalizarTexto(el("searchDashboard")?.value || "")) {
+      renderDashboardCards();
+    }
+  }, (error) => {
+    console.error("Erro ao ler coleção printers:", error);
+  });
+}
+
+const __originalObterTonerInfo = obterTonerInfo;
+obterTonerInfo = async function(ip) {
+  if (printerFirebaseState[ip]) {
+    return mapFirebasePrinterInfo(printerFirebaseState[ip]);
+  }
+  return await __originalObterTonerInfo(ip);
+};
+
+const __originalTestarTodasAsImpressoras = testarTodasAsImpressoras;
+testarTodasAsImpressoras = async function() {
+  const webMode = !(window.electronAPI && window.electronAPI.getTonerSNMP);
+  if (webMode) {
+    impressorasData.forEach((item) => {
+      const info = printerFirebaseState[item.ip] ? mapFirebasePrinterInfo(printerFirebaseState[item.ip]) : null;
+      tonerInfoState[item.ip] = info;
+      const alvoId = `toner-${item.ip.replace(/\./g, "-")}`;
+      if (el(alvoId)) {
+        el(alvoId).innerHTML = gerarHTMLToners(info);
+      }
+      if (info) maybeNotifyCriticalSupply(item.ip, info);
+    });
+    renderDashboardCards();
+    return;
+  }
+  return await __originalTestarTodasAsImpressoras();
+};
+
+const __originalAbrirIP = abrirIP;
+abrirIP = function(ip) {
+  // No tablet/web o IP fica só de leitura
+  const webMode = !(window.electronAPI && window.electronAPI.getTonerSNMP);
+  if (webMode) return;
+  return __originalAbrirIP(ip);
+};
+
+const __originalRenderImpressoras = renderImpressoras;
+renderImpressoras = function(lista = impressorasData) {
+  const tbody = el("impressorasTableBody");
+  if (!tbody) return __originalRenderImpressoras(lista);
+
+  const total = impressorasData.length;
+  const ok = impressorasData.filter(i => obterEstadoImpressora(i.ip) === "OK").length;
+  const problema = impressorasData.filter(i => {
+    const e = obterEstadoImpressora(i.ip);
+    return e === "Pendente" || e === "Em reparação";
+  }).length;
+  const resolvidas = impressorasData.filter(i => obterEstadoImpressora(i.ip) === "Resolvido").length;
+
+  setText("countImpressoras", total);
+  setText("countImpressorasOk", ok);
+  setText("countImpressorasProblema", problema);
+  setText("countImpressorasResolvidas", resolvidas);
+
+  const webMode = !(window.electronAPI && window.electronAPI.getTonerSNMP);
+
+  tbody.innerHTML = lista.map(item => {
+    const estado = obterEstadoImpressora(item.ip);
+    const tonerId = `toner-${item.ip.replace(/\./g, "-")}`;
+    const info = printerFirebaseState[item.ip] ? mapFirebasePrinterInfo(printerFirebaseState[item.ip]) : (tonerInfoState[item.ip] || null);
+    const ipHtml = webMode ? item.ip : `<a href="http://${item.ip}" target="_blank" rel="noopener noreferrer">${item.ip}</a>`;
+
+    return `
+      <tr>
+        <td>${item.modelo}</td>
+        <td>${item.serie}</td>
+        <td>${item.armazem}</td>
+        <td>${item.localizacao}</td>
+        <td>${ipHtml}</td>
+        <td>${badgeEstado(estado)}</td>
+        <td>
+          <div id="${tonerId}">${gerarHTMLToners(info)}</div>
+          <div class="table-actions" style="margin-top:8px;">
+            ${webMode ? "" : `<button class="action-btn ip" onclick="abrirIP('${item.ip}')">Abrir IP</button>`}
+            <button class="action-btn manut" onclick='abrirManutencaoDireta(${JSON.stringify(item)})'>Manutenção</button>
+            ${webMode ? "" : `<button class="action-btn" onclick="window.testarTonerImpressora('${item.ip}', '${tonerId}')">Testar toner</button>`}
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("");
+};
+
+window.addEventListener("DOMContentLoaded", () => {
+  bindPrintersFirebaseRealtime();
 });
