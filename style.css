@@ -209,4 +209,17 @@ button {
   .stats-grid {
     grid-template-columns: 1fr;
   }
+  /* FIX LOGO GRANDE */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* CASO TENHAS UM LOGO NO DASHBOARD */
+.logo,
+.dashboard-logo {
+  max-width: 250px;
+  display: block;
+  margin-bottom: 20px;
+}
 }
