@@ -89,8 +89,6 @@ window.disponivel = async function() {
   document.getElementById("localizacao").value = "";
   document.getElementById("cor").value = "";
   document.getElementById("data").value = "";
-
-  mostrarPagina("stock");
 };
 
 window.usar = async function(docId) {
