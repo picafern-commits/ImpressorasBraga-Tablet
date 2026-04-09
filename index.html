@@ -55,9 +55,19 @@
           </div>
         </div>
 
-        <div class="panel">
-          <h3>Pesquisa rápida</h3>
-          <input id="search" placeholder="Pesquisar por localização..." oninput="filtrar()">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span>Manutenções</span>
+            <strong id="countManut">0</strong>
+          </div>
+          <div class="stat-card">
+            <span>Pistolas</span>
+            <strong id="countPistolas">0</strong>
+          </div>
+          <div class="stat-card">
+            <span>Users</span>
+            <strong id="countUsers">0</strong>
+          </div>
         </div>
       </section>
 
@@ -135,32 +145,87 @@
         </div>
       </section>
 
-      <!-- PLACEHOLDERS -->
+      <!-- MANUTENÇÃO -->
       <section id="manutencao" class="page hidden">
         <div class="panel">
-          <h3>Manutenção</h3>
-          <p class="subtitle">Página pronta para desenvolver.</p>
+          <h3>Nova Manutenção</h3>
+
+          <input id="manutEquipamento" placeholder="Equipamento / Impressora">
+          <input id="manutLocal" placeholder="Localização">
+          <input id="manutDescricao" placeholder="Descrição da manutenção">
+          <input type="date" id="manutData">
+
+          <button class="primary" onclick="guardarManutencao()">Guardar Manutenção</button>
+        </div>
+
+        <div class="panel">
+          <h3>Histórico de Manutenção</h3>
+          <div id="listaManutencao" class="cards-list"></div>
         </div>
       </section>
 
+      <!-- PISTOLAS -->
       <section id="pistolas" class="page hidden">
         <div class="panel">
-          <h3>Pistolas CK65</h3>
-          <p class="subtitle">Página pronta para desenvolver.</p>
+          <h3>Registo Pistolas CK65</h3>
+
+          <input id="pistolaNome" placeholder="Nome / Código da pistola">
+          <select id="pistolaEstado">
+            <option value="">Estado</option>
+            <option>Em uso</option>
+            <option>Reserva</option>
+            <option>Avariada</option>
+          </select>
+          <input id="pistolaObs" placeholder="Observações">
+
+          <button class="primary" onclick="guardarPistola()">Guardar Pistola</button>
+        </div>
+
+        <div class="panel">
+          <h3>Lista Pistolas</h3>
+          <div id="listaPistolas" class="cards-list"></div>
         </div>
       </section>
 
+      <!-- PORTAS -->
       <section id="portas" class="page hidden">
         <div class="panel">
-          <h3>Portas Rede</h3>
-          <p class="subtitle">Página pronta para desenvolver.</p>
+          <h3>Registo Portas Rede</h3>
+
+          <input id="portaLocal" placeholder="Local / Armário / Sala">
+          <input id="portaNumero" placeholder="Porta / Patch / Switch">
+          <input id="portaEquipamento" placeholder="Equipamento ligado">
+          <input id="portaObs" placeholder="Observações">
+
+          <button class="primary" onclick="guardarPorta()">Guardar Porta</button>
+        </div>
+
+        <div class="panel">
+          <h3>Lista Portas Rede</h3>
+          <div id="listaPortas" class="cards-list"></div>
         </div>
       </section>
 
+      <!-- USERS -->
       <section id="users" class="page hidden">
         <div class="panel">
-          <h3>Users</h3>
-          <p class="subtitle">Página pronta para desenvolver.</p>
+          <h3>Novo User</h3>
+
+          <input id="userNome" placeholder="Nome">
+          <input id="userLogin" placeholder="Login / Username">
+          <input id="userDepartamento" placeholder="Departamento">
+          <select id="userEstado">
+            <option value="">Estado</option>
+            <option>Ativo</option>
+            <option>Inativo</option>
+          </select>
+
+          <button class="primary" onclick="guardarUser()">Guardar User</button>
+        </div>
+
+        <div class="panel">
+          <h3>Lista Users</h3>
+          <div id="listaUsers" class="cards-list"></div>
         </div>
       </section>
 
