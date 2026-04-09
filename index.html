@@ -2,27 +2,17 @@
 <html lang="pt">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>App Braga Tablet</title>
-  <meta name="theme-color" content="#0f172a">
-  <link rel="manifest" href="manifest.json">
-  <link rel="icon" href="icon.png">
-  <link rel="apple-touch-icon" href="icon.png">
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
   <link rel="stylesheet" href="style.css">
-  <script src="app.js"></script>
 </head>
 <body>
+
   <div class="app-shell">
-    
+
     <aside class="sidebar">
       <div class="brand">
-        <img src="icon.png" class="brand-logo" alt="Logo">
-        <div>
-          <h1>App Braga</h1>
-          <p>Tablet</p>
-        </div>
+        <h1>App Braga</h1>
       </div>
 
       <nav class="side-nav">
@@ -36,12 +26,11 @@
     </aside>
 
     <main class="main">
-      <div class="topbar">
-        <h2>App Braga</h2>
-        <p>Gestão interna</p>
-      </div>
 
       <section id="dashboard" class="page">
+        <h2>Dashboard Toners</h2>
+        <p>Gestão rápida de stock</p>
+
         <div class="stats-grid">
           <div class="stat-card">
             <span>Stock</span>
@@ -52,8 +41,8 @@
             <strong id="countUsados">0</strong>
           </div>
           <div class="stat-card">
-            <span>Reserva</span>
-            <strong>0</strong>
+            <span>PCs</span>
+            <strong id="countPCs">0</strong>
           </div>
         </div>
       </section>
@@ -61,6 +50,7 @@
       <section id="registo" class="page hidden">
         <div class="panel">
           <h3>Registo Toners</h3>
+
           <select id="equipamento">
             <option value="">Equipamento</option>
             <option>P3155DN</option>
@@ -96,7 +86,7 @@
           </select>
 
           <input type="date" id="data">
-          <button class="primary" onclick="disponivel()">Adicionar</button>
+          <button onclick="disponivel()">Adicionar</button>
         </div>
       </section>
 
@@ -120,7 +110,7 @@
           <input id="nomePC" placeholder="Nome do Computador">
           <input type="date" id="dataPC">
           <div id="checklist" class="checklist-list"></div>
-          <button class="primary" onclick="guardarPC()">Guardar</button>
+          <button onclick="guardarPC()">Guardar</button>
         </div>
 
         <div class="panel">
@@ -132,12 +122,13 @@
       <section id="config" class="page hidden">
         <div class="panel">
           <h3>Configurações</h3>
-          <div class="toggle-row">
+          <label class="toggle-row">
             <span>Dark mode</span>
             <input type="checkbox" id="darkSwitch">
-          </div>
+          </label>
         </div>
       </section>
+
     </main>
 
   </div>
