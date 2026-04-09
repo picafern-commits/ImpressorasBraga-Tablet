@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>App Braga</title>
+  <meta name="theme-color" content="#111827">
+  <link rel="apple-touch-icon" href="icon.png">
+  <link rel="icon" type="image/png" href="icon.png">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+  <div id="mobileOverlay" class="mobile-overlay" onclick="fecharMenu()"></div>
+
+  <aside id="mobileSidebar" class="mobile-sidebar">
+    <div class="mobile-sidebar-top">
+      <h2>App Braga</h2>
+      <button class="close-menu-btn" onclick="fecharMenu()">✕</button>
+    </div>
+
+    <div class="mobile-menu">
+      <button onclick="irParaPagina('dashboard')">🏠 Dashboard</button>
+      <button onclick="irParaPagina('registoPage')">🧾 Registo Toners</button>
+      <button onclick="irParaPagina('stockPage')">📦 Stock</button>
+      <button onclick="irParaPagina('historicoPage')">🕘 Histórico</button>
+      <button onclick="irParaPagina('computadores')">💻 Computadores</button>
+      <button onclick="irParaPagina('impressorasLista')">🖨️ Impressoras</button>
+      <button onclick="irParaPagina('manutencaoImpressoras')">🛠️ Manutenção</button>
+      <button onclick="irParaPagina('pistolasPage')">📱 Pistolas CK65</button>
+      <button onclick="irParaPagina('portasPage')">🌐 Portas Rede</button>
+      <button onclick="irParaPagina('usersPage')">👤 Users</button>
+      <button onclick="irParaPagina('config')">⚙️ Configurações</button>
+    </div>
+  </aside>
+
+  <div class="app-shell">
+    <header class="mobile-header">
+      <button class="open-menu-btn" onclick="abrirMenu()">☰</button>
+      <div class="header-text">
+        <h1>App Braga</h1>
+        <p id="headerSubtitle">Dashboard Toners</p>
+      </div>
+    </header>
+
+    <main class="mobile-main">
+
+      <!-- DASHBOARD -->
+      <section id="dashboard" class="mobile-page">
+        <div class="page-title">
+          <h2>Dashboard Toners</h2>
+          <p>Gestão rápida de stock</p>
+        </div>
+
+        <div class="stats-grid mobile-stats">
+          <div class="stat-card">
+            <span>Stock</span>
+            <strong id="countStock">0</strong>
+          </div>
+          <div class="stat-card">
+            <span>Usados</span>
+            <strong id="countUsados">0</strong>
+          </div>
+          <div class="stat-card">
+            <span>PCs</span>
+            <strong id="countPCs">0</strong>
+          </div>
+        </div>
+
+        <div class="stats-grid mobile-stats">
+          <div class="stat-card">
+            <span>Pistolas</span>
+            <strong id="countPistolasDashboard">0</strong>
+          </div>
+          <div class="stat-card">
+            <span>Portas</span>
+            <strong id="countPortasDashboard">0</strong>
+          </div>
+          <div class="stat-card">
+            <span>Users</span>
+            <strong id="countUsersDashboard">0</strong>
+          </div>
+        </div>
+
+        <div class="panel">
+          <input id="searchDashboard" type="text" placeholder="Pesquisar no stock..." oninput="filtrarDashboard()">
+          <div id="listaDashboardStock" class="cards-list"></div>
+        </div>
+      </section>
+
+      <!-- REGISTO TONERS -->
+      <section id="registoPage" class="mobile-page" style="display:none;">
+        <div class="page-title">
+          <h2>Registo Toners</h2>
+          <p>Adicionar toner ao stock</p>
+        </div>
+
+        <div class="panel">
+          <select id="equipamento">
+            <option value="">Equipamento</option>
+            <option>P3155DN</option>
+            <option>TASKalfa_255ci</option>
+            <option>PA5500x</option>
+          </select>
+
+          <select id="localizacao">
+            <option value="">Localização</option>
+            <option>Sem Localização</option>
+            <option>Ilha 1 - R4B2229805</option>
+            <option>Ilha 2 - WD44336210</option>
+            <option>Ilha 3 - R4B1395508</option>
+            <option>Ilha 4 - R4B1293179</option>
+            <option>Ilha 5 - R4B1293180</option>
+            <option>Balcão 1 - R4B1293183</option>
+            <option>Balcão 2 - R4B1293184</option>
+            <option>Dep.Logistica - R4B2230012</option>
+            <option>G/Encomendas - R4B1293173</option>
+            <option>Devoluções - R4B1395261</option>
+            <option>Escritorio - RVP0Z03770</option>
+            <option>Ilha1-VRL - R4B1293169</option>
+            <option>Ilha2-VRL - R4B1293174</option>
+            <option>Ilha3-VRL - RVP0Z03715</option>
+          </select>
+
+          <select id="cor">
+            <option value="">Cor</option>
+            <option>Preto</option>
+            <option>Amarelo</option>
+            <option>Vermelho</option>
+            <option>Azul</option>
+          </select>
+
+          <input type="date" id="data">
+
+          <button class="primary-btn" onclick="disponivel()">Adicionar Toner</button>
+        </div>
+      </section>
+
+      <!-- STOCK -->
+      <section id="stockPage" class="mobile-page" style="display:none;">
+        <div class="page-title">
+          <h2>Stock</h2>
+          <p>Toners disponíveis</p>
+        </div>
+
+        <div class="panel">
+          <input id="search" type="text" placeholder="Pesquisar por localização..." oninput="filtrar()">
+        </div>
+
+        <div id="listaStock" class="cards-list"></div>
+      </section>
+
+      <!-- HISTÓRICO -->
+      <section id="historicoPage" class="mobile-page" style="display:none;">
+        <div class="page-title">
+          <h2>Histórico</h2>
+          <p>Toners usados</p>
+        </div>
+
+        <div id="listaHistorico" class="cards-list"></div>
+      </section>
+
+      <!-- COMPUTADORES -->
+      <section id="computadores" class="mobile-page" style="display:none;">
+        <div class="page-title">
+          <h2>Computadores</h2>
+          <p>Checklist de instalação</p>
+        </div>
+
+        <div class="panel">
+          <input id="nomePC" type="text" placeholder="Nome do Computador">
+          <input type="date" id="dataPC">
+          <div id="checklist" class="checklist-grid mobile-checklist"></div>
+          <button class="primary-btn" onclick="guardarPC()">Guardar</button>
+        </div>
+
+        <div class="panel">
+          <h3>Histórico de Computadores</h3>
+          <div id="listaPC" class="cards-list"></div>
+        </div>
+      </section>
+
+      <!-- IMPRESSORAS -->
+      <section id="impressorasLista" class="mobile-page" style="display:none;">
+        <div class="page-title">
+          <h2>Impressoras</h2>
+          <p>Lista de impressoras e IPs</p>
+        </div>
+
+        <div class="panel table-panel">
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Modelo</th>
+                  <th>Série</th>
+                  <th>Armazém</th>
+                  <th>Localização</th>
+                  <th>IP</th>
+                </tr>
+              </thead>
+              <tbody id="impressorasTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- MANUTENÇÃO -->
+      <section id="manutencaoImpressoras" class="mobile-page" style="display:none;">
+        <div class="page-title">
+          <h2>Manutenção Impressoras</h2>
+          <p>Pedidos e resolução</p>
+        </div>
+
+        <div class="panel">
+          <select id="manutencaoTecnico">
+            <option value="">Selecionar técnico</option>
+            <option value="Ricardo">Ricardo</option>
+          </select>
+
+          <select id="manutencaoArmazem" onchange="sincronizarManutencaoPorArmazem()">
+            <option value="">Selecionar armazém</option>
+            <option value="Braga">Braga</option>
+            <option value="Vila Real">Vila Real</option>
+          </select>
+
+          <select id="manutencaoModelo" onchange="sincronizarManutencaoPorModelo()">
+            <option value="">Selecionar modelo</option>
+          </select>
+
+          <select id="manutencaoSerie" onchange="sincronizarManutencaoPorSerie()">
+            <option value="">Selecionar nº série</option>
+          </select>
+
+          <select id="manutencaoLocalizacao">
+            <option value="">Selecionar localização</option>
+          </select>
+
+          <select id="manutencaoIP" onchange="sincronizarManutencaoPorIP()">
+            <option value="">Selecionar IP</option>
+          </select>
+
+          <input type="date" id="manutencaoPedido">
+          <input type="date" id="manutencaoResolucao">
+
+          <textarea id="manutencaoMotivo" placeholder="Motivo da manutenção"></textarea>
+
+          <button class="primary-btn" onclick="guardarManutencao()">Guardar manutenção</button>
+        </div>
+
+        <div class="panel">
+          <h3>Histórico</h3>
+          <div id="listaManutencoes" class="cards-list"></div>
+        </div>
+      </section>
+
+      <!-- PISTOLAS -->
+      <section id="pistolasPage" class="mobile-page" style="display:none;">
+        <div class="page-title">
+          <h2>Pistolas CK65</h2>
+          <p>Lista das pistolas</p>
+        </div>
+
+        <div class="stats-grid mobile-stats">
+          <div class="stat-card">
+            <span>Total</span>
+            <strong id="countPistolas">0</strong>
+          </div>
+          <div class="stat-card">
+            <span>Dia</span>
+            <strong id="countPistolasDia">0</strong>
+          </div>
+          <div class="stat-card">
+            <span>Reserva</span>
+            <strong id="countPistolasReserva">0</strong>
+          </div>
+        </div>
+
+        <div class="panel">
+          <input id="searchPistolas" type="text" placeholder="Pesquisar pistolas..." oninput="filtrarPistolas()">
+          <select id="filterTurnoPistolas" onchange="filtrarPistolas()">
+            <option value="">Todos os turnos</option>
+            <option value="Dia">Dia</option>
+          </select>
+          <select id="filterTipoPistolas" onchange="filtrarPistolas()">
+            <option value="">Todas</option>
+            <option value="ativas">Ativas</option>
+            <option value="reserva">Reserva</option>
+          </select>
+        </div>
+
+        <div id="listaPistolas" class="cards-list"></div>
+      </section>
+
+      <!-- PORTAS -->
+      <section id="portasPage" class="mobile-page" style="display:none;">
+        <div class="page-title">
+          <h2>Portas Rede</h2>
+          <p>Estado das portas</p>
+        </div>
+
+        <div class="stats-grid mobile-stats">
+          <div class="stat-card">
+            <span>Total</span>
+            <strong id="countPortas">0</strong>
+          </div>
+          <div class="stat-card">
+            <span>Ocupadas</span>
+            <strong id="countPortasUsadas">0</strong>
+          </div>
+          <div class="stat-card">
+            <span>Livres</span>
+            <strong id="countPortasLivres">0</strong>
+          </div>
+        </div>
+
+        <div class="panel">
+          <input id="searchPortas" type="text" placeholder="Pesquisar portas..." oninput="filtrarPortas()">
+          <select id="filterEstadoPortas" onchange="filtrarPortas()">
+            <option value="">Todos os estados</option>
+            <option value="ocupado">Ocupado</option>
+            <option value="livre">Livre</option>
+            <option value="semuser">Sem user</option>
+          </select>
+        </div>
+
+        <div id="listaPortas" class="cards-list"></div>
+      </section>
+
+      <!-- USERS -->
+      <section id="usersPage" class="mobile-page" style="display:none;">
+        <div class="page-title">
+          <h2>Users</h2>
+          <p>Lista de utilizadores</p>
+        </div>
+
+        <div class="stats-grid mobile-stats">
+          <div class="stat-card">
+            <span>Total</span>
+            <strong id="countUsers">0</strong>
+          </div>
+          <div class="stat-card">
+            <span>MO365</span>
+            <strong id="countUsersMO365">0</strong>
+          </div>
+          <div class="stat-card">
+            <span>Pistola</span>
+            <strong id="countUsersPistola">0</strong>
+          </div>
+        </div>
+
+        <div class="panel">
+          <input id="searchUsers" type="text" placeholder="Pesquisar users..." oninput="filtrarUsers()">
+          <select id="filterUsersMO365" onchange="filtrarUsers()">
+            <option value="">Todos</option>
+            <option value="sim">Com MO365</option>
+            <option value="nao">Sem MO365</option>
+          </select>
+          <select id="filterUsersPistola" onchange="filtrarUsers()">
+            <option value="">Todos</option>
+            <option value="sim">Com Pistola</option>
+            <option value="nao">Sem Pistola</option>
+          </select>
+        </div>
+
+        <div id="listaUsers" class="cards-list"></div>
+      </section>
+
+      <!-- CONFIG -->
+      <section id="config" class="mobile-page" style="display:none;">
+        <div class="page-title">
+          <h2>Configurações</h2>
+          <p>Preferências da aplicação</p>
+        </div>
+
+        <div class="panel">
+          <label class="switch-row">
+            <input type="checkbox" id="darkSwitch">
+            <span>Dark Mode</span>
+          </label>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js");
+      });
+    }
+  </script>
+
+</body>
+</html>
