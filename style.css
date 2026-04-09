@@ -134,9 +134,9 @@ img {
   border-radius: 18px;
 }
 
-h2 {
-  margin: 0 0 4px;
-  font-size: 22px;
+h2,
+h3 {
+  margin: 0 0 8px;
 }
 
 .subtitle {
@@ -239,12 +239,6 @@ button.primary,
   background: var(--primary);
   color: #fff;
   border-color: transparent;
-}
-
-button.secondary,
-.secondary {
-  background: transparent;
-  color: var(--primary);
 }
 
 .delete-btn {
