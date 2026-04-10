@@ -1387,9 +1387,7 @@ function renderDashboardCards(items) {
   if (!lista) return;
 
   const searchTxt = normalizarTexto(el("searchDashboard")?.value || "");
-  const { criticalPrinters, attentionPrinters } = getDashboardVisibleSets();
-
-  const filteredCritical = criticalPrinters.filter(entry => {
+  const criticalPrinters = getDashboardCriticalPrinters().filter(entry => {
     if (!searchTxt) return true;
     const haystack = [
       entry.item.modelo,
@@ -1402,7 +1400,7 @@ function renderDashboardCards(items) {
     return normalizarTexto(haystack).includes(searchTxt);
   });
 
-  const filteredAttention = attentionPrinters.filter(entry => {
+  const attentionPrinters = getDashboardAttentionPrinters().filter(entry => {
     if (!searchTxt) return true;
     const haystack = [
       entry.item.modelo,
@@ -1415,19 +1413,19 @@ function renderDashboardCards(items) {
     return normalizarTexto(haystack).includes(searchTxt);
   });
 
-  if (!filteredCritical.length && !filteredAttention.length) {
+  if (!criticalPrinters.length && !attentionPrinters.length) {
     lista.innerHTML = `<div class="panel empty-state"><h3>Sem alertas</h3><p>Quando houver criticidade ou atenção operacional, os equipamentos aparecem aqui automaticamente.</p></div>`;
     return;
   }
 
   let html = "";
 
-  if (filteredCritical.length) {
+  if (criticalPrinters.length) {
     html += `<div class="dashboard-section-title"><span class="dashboard-section-dot critical"></span><h3>Prioridade Máxima</h3></div>`;
-    html += `<div class="cards-scroll">` + filteredCritical.map(({ item, info, priorityText, residueText }) => {
+    html += criticalPrinters.map(({ item, info, priorityText, residueText }) => {
       const estado = obterEstadoImpressora(item.ip);
       return `
-        <div class="dashboard-card dashboard-critical-card dashboard-mobile-card">
+        <div class="dashboard-card dashboard-critical-card">
           <div class="dashboard-critical-top">
             <div>
               <div class="stock-id">${item.modelo}</div>
@@ -1448,19 +1446,15 @@ function renderDashboardCards(items) {
             <div class="dashboard-mini-card"><span>Resíduo</span><strong>${residueText}</strong></div>
           </div>
           <div class="printer-toners-grid" style="margin-top:10px;">${info ? gerarHTMLToners(info) : gerarHTMLBarraToner(null)}</div>
-          <div class="card-actions">
-            <button class="small-btn btn-edit" onclick="window.location.href='impressoras.html'">Ver Impressora</button>
-            <button class="small-btn btn-use" onclick='abrirManutencaoDireta(${JSON.stringify(item)})'>Manutenção</button>
-          </div>
         </div>
       `;
-    }).join("") + `</div>`;
+    }).join("");
   }
 
-  if (filteredAttention.length) {
+  if (attentionPrinters.length) {
     html += `<div class="dashboard-section-title"><span class="dashboard-section-dot warning"></span><h3>Atenção Operacional</h3></div>`;
-    html += `<div class="cards-scroll">` + filteredAttention.map(({ item, info, attentionText }) => `
-      <div class="dashboard-card dashboard-warning-card dashboard-mobile-card">
+    html += attentionPrinters.map(({ item, info, attentionText }) => `
+      <div class="dashboard-card dashboard-warning-card">
         <div class="dashboard-critical-top">
           <div>
             <div class="stock-id">${item.modelo}</div>
@@ -1476,19 +1470,11 @@ function renderDashboardCards(items) {
           <div class="dashboard-priority-text">${attentionText || "Toner entre 10% e 25%"}</div>
         </div>
         <div class="printer-toners-grid" style="margin-top:10px;">${info ? gerarHTMLToners(info) : gerarHTMLBarraToner(null)}</div>
-        <div class="card-actions">
-          <button class="small-btn btn-edit" onclick="window.location.href='impressoras.html'">Ver Impressora</button>
-        </div>
       </div>
-    `).join("") + `</div>`;
+    `).join("");
   }
 
   lista.innerHTML = html;
-
-  const firstCritical = lista.querySelector(".dashboard-critical-card");
-  if (firstCritical && modoOperacaoAtivo) {
-    firstCritical.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
 }
 
 
@@ -2704,30 +2690,6 @@ function getDashboardAttentionPrinters() {
 }
 
 
-let modoOperacaoAtivo = false;
-
-function toggleModoOperacao() {
-  modoOperacaoAtivo = !modoOperacaoAtivo;
-  const btn = document.getElementById("btnModoOperacao");
-  if (btn) {
-    btn.classList.toggle("active", modoOperacaoAtivo);
-    btn.innerText = modoOperacaoAtivo ? "Modo Operação: ON" : "Modo Operação";
-  }
-  renderDashboardCards(stockGlobal);
-}
-
 function emitCriticalToast(message) {
   mostrarMensagem(message, "erro");
-  try {
-    if (navigator.vibrate) navigator.vibrate(180);
-  } catch (e) {}
-}
-
-function getDashboardVisibleSets() {
-  const criticalPrinters = getDashboardCriticalPrinters();
-  const attentionPrinters = getDashboardAttentionPrinters();
-  if (modoOperacaoAtivo) {
-    return { criticalPrinters, attentionPrinters };
-  }
-  return { criticalPrinters, attentionPrinters };
 }
