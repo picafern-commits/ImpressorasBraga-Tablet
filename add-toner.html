@@ -44,6 +44,28 @@
 <main class="main">
 
   <div class="topbar premium-topbar"><div class="topbar-main"><h1>Adicionar Toner</h1><p class="subtitle">Novo toner para stock</p></div><div class="topbar-status"><span class="status-pill">Sistema Online</span><span class="version-pill">v1.3 Premium</span></div></div>
+
+  <div class="panel">
+    <div class="section-header">
+      <div>
+        <h3>Leitura por Câmara</h3>
+        <p class="section-subtitle">Ler código de barras ou QR para preencher automaticamente</p>
+      </div>
+    </div>
+
+    <div class="card-actions" style="margin-bottom:14px;">
+      <button type="button" class="primary-btn" onclick="startScanner()">
+        📷 Ler com Câmara
+      </button>
+
+      <button type="button" class="secondary-btn" onclick="stopScanner()">
+        Fechar Câmara
+      </button>
+    </div>
+
+    <div id="reader" class="scanner-box"></div>
+  </div>
+
   <div class="panel form-grid">
     <label><span>Equipamento</span>
       <select id="equipamento">
@@ -75,6 +97,7 @@
 </main>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+<script src="https://unpkg.com/html5-qrcode"></script>
 <script src="app.js"></script>
 </body>
 </html>

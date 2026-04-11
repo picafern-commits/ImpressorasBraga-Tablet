@@ -1387,7 +1387,19 @@ function renderDashboardCards(items) {
   if (!lista) return;
 
   const searchTxt = normalizarTexto(el("searchDashboard")?.value || "");
-  const criticalPrinters = getDashboardCriticalPrinters().filter(entry => {
+
+  const criticas = impressorasData.map(item => {
+    const info = tonerInfoState[item.ip] || null;
+    const colors = Array.isArray(info?.colors) ? info.colors : [];
+    const residue = info?.residue || null;
+
+    const criticalColors = colors.filter(c => typeof c.percent === "number" && c.percent <= 25);
+    const monoPercent = typeof info?.percent === "number" ? info.percent : null;
+    const monoCritical = colors.length === 0 && monoPercent !== null && monoPercent <= 25;
+
+    const isCritical = criticalColors.length > 0 || monoCritical;
+    return { item, info, criticalColors, monoCritical, residue, isCritical };
+  }).filter(entry => entry.isCritical).filter(entry => {
     if (!searchTxt) return true;
     const haystack = [
       entry.item.modelo,
@@ -1395,88 +1407,35 @@ function renderDashboardCards(items) {
       entry.item.ip,
       entry.item.localizacao,
       entry.item.armazem,
-      entry.priorityText
+      ...(entry.criticalColors || []).map(c => c.label),
+      entry.monoCritical ? "Preto" : ""
     ].join(" ");
     return normalizarTexto(haystack).includes(searchTxt);
   });
 
-  const attentionPrinters = getDashboardAttentionPrinters().filter(entry => {
-    if (!searchTxt) return true;
-    const haystack = [
-      entry.item.modelo,
-      entry.item.serie,
-      entry.item.ip,
-      entry.item.localizacao,
-      entry.item.armazem,
-      entry.attentionText
-    ].join(" ");
-    return normalizarTexto(haystack).includes(searchTxt);
-  });
-
-  if (!criticalPrinters.length && !attentionPrinters.length) {
-    lista.innerHTML = `<div class="panel empty-state"><h3>Sem alertas</h3><p>Quando houver criticidade ou atenção operacional, os equipamentos aparecem aqui automaticamente.</p></div>`;
+  if (!criticas.length) {
+    lista.innerHTML = `<div class="panel empty-state"><h3>Sem impressoras críticas</h3><p>As impressoras com toner a 25% ou menos vão aparecer aqui automaticamente.</p></div>`;
     return;
   }
 
-  let html = "";
+  lista.innerHTML = criticas.map(({ item, info, criticalColors, monoCritical, residue }) => {
+    const supplyHtml = criticalColors.length
+      ? criticalColors.map(c => gerarHTMLBarraToner(c.percent, c.label, c.key)).join("")
+      : (monoCritical ? gerarHTMLBarraToner(info.percent, "Preto", "black") : "");
 
-  if (criticalPrinters.length) {
-    html += `<div class="dashboard-section-title"><span class="dashboard-section-dot critical"></span><h3>Prioridade Máxima</h3></div>`;
-    html += criticalPrinters.map(({ item, info, priorityText, residueText }) => {
-      const estado = obterEstadoImpressora(item.ip);
-      return `
-        <div class="dashboard-card dashboard-critical-card">
-          <div class="dashboard-critical-top">
-            <div>
-              <div class="stock-id">${item.modelo}</div>
-              <div class="meta-line">Série: <span class="meta-value">${item.serie}</span></div>
-              <div class="meta-line">Local: <span class="meta-value">${item.localizacao} (${item.armazem})</span></div>
-            </div>
-            <div class="dashboard-critical-badges">
-              ${badgeEstado(estado)}
-              <span class="inline-priority-badge">Crítica</span>
-            </div>
-          </div>
-          <div class="dashboard-priority-box">
-            <div class="meta-line">Prioridade Máxima</div>
-            <div class="dashboard-priority-text">${priorityText}</div>
-          </div>
-          <div class="dashboard-critical-grid">
-            <div class="dashboard-mini-card"><span>IP</span><strong>${item.ip}</strong></div>
-            <div class="dashboard-mini-card"><span>Resíduo</span><strong>${residueText}</strong></div>
-          </div>
-          <div class="printer-toners-grid" style="margin-top:10px;">${info ? gerarHTMLToners(info) : gerarHTMLBarraToner(null)}</div>
-        </div>
-      `;
-    }).join("");
-  }
+    const residueHtml = residue ? gerarHTMLBarraToner(residue.percent, residue.label || "Resíduo", "waste") : "";
 
-  if (attentionPrinters.length) {
-    html += `<div class="dashboard-section-title"><span class="dashboard-section-dot warning"></span><h3>Atenção Operacional</h3></div>`;
-    html += attentionPrinters.map(({ item, info, attentionText }) => `
-      <div class="dashboard-card dashboard-warning-card">
-        <div class="dashboard-critical-top">
-          <div>
-            <div class="stock-id">${item.modelo}</div>
-            <div class="meta-line">Série: <span class="meta-value">${item.serie}</span></div>
-            <div class="meta-line">Local: <span class="meta-value">${item.localizacao} (${item.armazem})</span></div>
-          </div>
-          <div class="dashboard-critical-badges">
-            <span class="inline-priority-badge warning">Atenção</span>
-          </div>
-        </div>
-        <div class="dashboard-priority-box warning">
-          <div class="meta-line">Atenção Operacional</div>
-          <div class="dashboard-priority-text">${attentionText || "Toner entre 10% e 25%"}</div>
-        </div>
-        <div class="printer-toners-grid" style="margin-top:10px;">${info ? gerarHTMLToners(info) : gerarHTMLBarraToner(null)}</div>
+    return `
+      <div class="dashboard-card dashboard-critical-card">
+        <div class="stock-id">${item.modelo}</div>
+        <div class="meta-line">Série: <span class="meta-value">${item.serie}</span></div>
+        <div class="meta-line">Local: <span class="meta-value">${item.localizacao} (${item.armazem})</span></div>
+        <div class="meta-line">IP: <span class="meta-value">${item.ip}</span></div>
+        <div class="printer-toners-grid" style="margin-top:10px;">${supplyHtml}${residueHtml}</div>
       </div>
-    `).join("");
-  }
-
-  lista.innerHTML = html;
+    `;
+  }).join("");
 }
-
 
 function renderStockCards(items) {
   const lista = el("listaStock");
@@ -2040,16 +1999,6 @@ async function obterTonerInfo(ip) {
   }
 }
 
-
-async function obterTonerComTimeout(ip, tempo = 4000) {
-  return Promise.race([
-    obterTonerInfo(ip),
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("timeout")), tempo)
-    )
-  ]);
-}
-
 async function testarTonerImpressora(ip, outputId) {
   const output = el(outputId);
   if (output) {
@@ -2069,7 +2018,7 @@ async function testarTonerImpressora(ip, outputId) {
     `;
   }
 
-  const info = await obterTonerComTimeout(ip);
+  const info = await obterTonerInfo(ip);
   tonerInfoState[ip] = info || null;
 
   if (output) output.innerHTML = gerarHTMLToners(info);
@@ -2081,26 +2030,16 @@ async function testarTodasAsImpressoras() {
   for (const item of impressorasData) {
     const alvoId = `toner-${item.ip.replace(/\./g, "-")}`;
 
-    try {
-      if (el(alvoId)) {
-        await testarTonerImpressora(item.ip, alvoId);
-      } else {
-        const info = await obterTonerComTimeout(item.ip);
-        tonerInfoState[item.ip] = info || null;
-
-        if (info) {
-          maybeNotifyCriticalSupply(item.ip, info);
-        }
-      }
-    } catch (erro) {
-      console.error("Erro nesta impressora:", item.ip, erro);
-      tonerInfoState[item.ip] = null;
+    if (el(alvoId)) {
+      await testarTonerImpressora(item.ip, alvoId);
+    } else {
+      const info = await obterTonerInfo(item.ip);
+      tonerInfoState[item.ip] = info || null;
+      if (info) maybeNotifyCriticalSupply(item.ip, info);
     }
-
-    renderDashboardCards(stockGlobal);
-    renderDashboardInsights(stockGlobal, impressorasData);
-    renderGlobalPriorityStrip();
   }
+
+  renderDashboardCards();
 }
 
 window.testarTonerImpressora = testarTonerImpressora;
@@ -2646,88 +2585,161 @@ window.addEventListener("DOMContentLoaded", () => {
 });
 
 
-function getDashboardCriticalPrinters() {
-  return impressorasData
-    .map(item => {
-      const info = tonerInfoState[item.ip] || null;
-      const colors = Array.isArray(info?.colors) ? info.colors : [];
-      const residue = info?.residue || null;
+/* =========================
+   SCANNER - TABLET / IPHONE
+========================= */
+const baseToners = {
+  "8373036523": { equipamento: "P3155DN", cor: "Preto", codigo: "TK-3190" },
+  "1T02T60NLC": { equipamento: "P3155DN", cor: "Preto", codigo: "TK-3190" },
+  "TK-3190": { equipamento: "P3155DN", cor: "Preto", codigo: "TK-3190" },
+  "TK3190": { equipamento: "P3155DN", cor: "Preto", codigo: "TK-3190" },
+  "TK-8365Y": { equipamento: "TASKalfa_255ci", cor: "Amarelo", codigo: "TK-8365Y" },
+  "TK-8365C": { equipamento: "TASKalfa_255ci", cor: "Azul", codigo: "TK-8365C" },
+  "TK-8365M": { equipamento: "TASKalfa_255ci", cor: "Vermelho", codigo: "TK-8365M" },
+  "TK-8365K": { equipamento: "TASKalfa_255ci", cor: "Preto", codigo: "TK-8365K" }
+};
 
-      const maxPriorityColors = colors.filter(c => typeof c.percent === "number" && c.percent < 10);
-      const monoPercent = typeof info?.percent === "number" ? info.percent : null;
-      const monoCritical = colors.length === 0 && monoPercent !== null && monoPercent < 10;
-      const residueCritical = residue && typeof residue.percent === "number" && residue.percent >= 90;
+function normalizarCodigoScanner(valor) {
+  return String(valor || "").trim().replace(/\s+/g, "").toUpperCase();
+}
 
-      let priorityText = "";
-      if (maxPriorityColors.length) {
-        priorityText = maxPriorityColors.map(c => `${c.label} ${c.percent}%`).join(" · ");
-      } else if (monoCritical) {
-        priorityText = `Preto ${monoPercent}%`;
-      } else if (residueCritical) {
-        priorityText = `Resíduo ${residue.percent}%`;
+function preencherFormularioPorCodigo(codigoLido) {
+  const codigo = normalizarCodigoScanner(codigoLido);
+  const toner = baseToners[codigo];
+
+  if (!toner) {
+    mostrarMensagem(`Código não reconhecido: ${codigo}`, "erro");
+    return false;
+  }
+
+  const equipamento = el("equipamento");
+  const cor = el("cor");
+
+  if (equipamento) equipamento.value = toner.equipamento || "";
+  if (cor) cor.value = toner.cor || "";
+
+  mostrarMensagem(`Toner identificado: ${toner.codigo}`);
+  return true;
+}
+
+function preencherFormularioPorQR(texto) {
+  const bruto = String(texto || "").trim();
+  if (!bruto) return false;
+
+  if (!bruto.includes(";") || !bruto.includes("=")) {
+    return preencherFormularioPorCodigo(bruto);
+  }
+
+  const partes = bruto.split(";");
+  const dados = {};
+
+  partes.forEach(parte => {
+    const [k, v] = parte.split("=");
+    if (!k || typeof v === "undefined") return;
+    dados[k.trim().toUpperCase()] = v.trim();
+  });
+
+  const equipamentoValor = dados.MODELO || dados.EQUIPAMENTO || "";
+  const corValor = dados.COR || "";
+  const localValor = dados.LOCAL || dados.LOCALIZACAO || "";
+  const codigoValor = dados.CODIGO || dados.ID || dados.MATERIAL || dados.MATERIALNO || "";
+
+  if (equipamentoValor && el("equipamento")) el("equipamento").value = equipamentoValor;
+  if (corValor && el("cor")) el("cor").value = corValor;
+  if (localValor && el("localizacao")) el("localizacao").value = localValor;
+
+  if ((!equipamentoValor || !corValor) && codigoValor) {
+    return preencherFormularioPorCodigo(codigoValor);
+  }
+
+  if (!equipamentoValor || !corValor) {
+    mostrarMensagem("QR sem dados suficientes para adicionar.", "erro");
+    return false;
+  }
+
+  mostrarMensagem("QR lido com sucesso.");
+  return true;
+}
+
+let scannerInstance = null;
+let scannerAtivo = false;
+
+function startScanner() {
+  const reader = document.getElementById("reader");
+
+  if (!reader) {
+    mostrarMensagem("Zona do scanner não encontrada.", "erro");
+    return;
+  }
+
+  if (scannerAtivo) {
+    mostrarMensagem("A câmara já está aberta.", "erro");
+    return;
+  }
+
+  reader.innerHTML = "";
+  scannerInstance = new Html5Qrcode("reader");
+
+  scannerInstance.start(
+    { facingMode: "environment" },
+    {
+      fps: 10,
+      qrbox: { width: 280, height: 180 },
+      experimentalFeatures: {
+        useBarCodeDetectorIfSupported: true
+      },
+      formatsToSupport: [
+        Html5QrcodeSupportedFormats.QR_CODE,
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.CODE_39,
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8
+      ]
+    },
+    (decodedText) => {
+      let ok = false;
+
+      if (decodedText.includes(";") || decodedText.includes("=")) {
+        ok = preencherFormularioPorQR(decodedText);
+      } else {
+        ok = preencherFormularioPorCodigo(decodedText);
       }
 
-      return {
-        item,
-        info,
-        residue,
-        priorityText,
-        isCritical: !!priorityText,
-        residueText: residue && typeof residue.percent === "number" ? `${residue.percent}%` : "N/D"
-      };
+      if (ok) stopScanner();
+    },
+    () => {}
+  ).then(() => {
+    scannerAtivo = true;
+    mostrarMensagem("Câmara iniciada.");
+  }).catch((error) => {
+    console.error("Erro ao iniciar scanner:", error);
+    mostrarMensagem("Não foi possível abrir a câmara.", "erro");
+  });
+}
+
+function stopScanner() {
+  const reader = document.getElementById("reader");
+
+  if (!scannerInstance || !scannerAtivo) {
+    if (reader) reader.innerHTML = "";
+    scannerAtivo = false;
+    return;
+  }
+
+  scannerInstance.stop()
+    .then(() => {
+      scannerInstance.clear();
+      scannerInstance = null;
+      scannerAtivo = false;
+      if (reader) reader.innerHTML = "";
     })
-    .filter(entry => entry.isCritical);
+    .catch((error) => {
+      console.error("Erro ao fechar scanner:", error);
+      scannerAtivo = false;
+      if (reader) reader.innerHTML = "";
+    });
 }
 
-function getDashboardAttentionPrinters() {
-  return impressorasData
-    .map(item => {
-      const info = tonerInfoState[item.ip] || null;
-      const colors = Array.isArray(info?.colors) ? info.colors : [];
-      const residue = info?.residue || null;
-
-      const attentionColors = colors.filter(c => typeof c.percent === "number" && c.percent >= 10 && c.percent <= 25);
-      const monoPercent = typeof info?.percent === "number" ? info.percent : null;
-      const monoAttention = colors.length === 0 && monoPercent !== null && monoPercent >= 10 && monoPercent <= 25;
-
-      let attentionText = "";
-      if (attentionColors.length) {
-        attentionText = attentionColors.map(c => `${c.label} ${c.percent}%`).join(" · ");
-      } else if (monoAttention) {
-        attentionText = `Preto ${monoPercent}%`;
-      }
-
-      return {
-        item,
-        info,
-        residue,
-        attentionText,
-        isAttention: !!attentionText,
-        residueText: residue && typeof residue.percent === "number" ? `${residue.percent}%` : "N/D"
-      };
-    })
-    .filter(entry => entry.isAttention);
-}
-
-
-function emitCriticalToast(message) {
-  mostrarMensagem(message, "erro");
-}
-
-
-function gerarHTMLSemResposta() {
-  return `
-    <div class="printer-toner-box printer-toner-box-error">
-      <div class="printer-toner-head">
-        <span class="printer-toner-title">Toner</span>
-        <span class="printer-toner-status is-error">Sem resposta</span>
-      </div>
-      <div class="printer-toner-bar-wrap">
-        <div class="printer-toner-bar printer-toner-bar-empty" style="width:100%;"></div>
-      </div>
-      <div class="printer-toner-foot">
-        <span class="printer-toner-value">Impressora não respondeu</span>
-      </div>
-    </div>
-  `;
-}
+window.addEventListener("beforeunload", () => {
+  try { stopScanner(); } catch (e) { console.error(e); }
+});
