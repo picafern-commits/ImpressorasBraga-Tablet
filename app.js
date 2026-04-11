@@ -2778,8 +2778,12 @@ async function carregarMapeamentosFirebase() {
 function aplicarTonerNoFormulario(toner) {
   const equipamento = el("equipamento");
   const cor = el("cor");
+
   if (equipamento) equipamento.value = toner.equipamento || "";
   if (cor) cor.value = toner.cor || "";
+
+  preencherDataAtualSeVazia();
+  abrirSerie3Digitos();
 }
 
 function abrirAprendizagemCodigo(codigo) {
@@ -2980,6 +2984,7 @@ window.addEventListener("beforeunload", () => {
 function preencherDataAtualSeVazia() {
   const dataEl = el("data");
   if (!dataEl) return;
+
   if (!dataEl.value) {
     const hoje = new Date();
     const yyyy = hoje.getFullYear();
@@ -2992,16 +2997,18 @@ function preencherDataAtualSeVazia() {
 function abrirSerie3Digitos() {
   const box = el("serial3Box");
   if (box) box.style.display = "block";
+
   const input = el("serial3Input");
   if (input) {
     input.value = "";
-    setTimeout(() => input.focus(), 120);
+    setTimeout(() => input.focus(), 100);
   }
 }
 
 function fecharSerie3Digitos() {
   const box = el("serial3Box");
   if (box) box.style.display = "none";
+
   const input = el("serial3Input");
   if (input) input.value = "";
 }
@@ -3022,7 +3029,7 @@ function montarTextoLocalizacao(item) {
 }
 
 function confirmarSerie3Digitos() {
-  const valor = (el("serial3Input") && el("serial3Input").value || "").trim().toUpperCase();
+  const valor = ((el("serial3Input") && el("serial3Input").value) || "").trim().toUpperCase();
 
   if (valor.length !== 3) {
     mostrarMensagem("Introduza exatamente 3 dígitos.", "erro");
@@ -3035,14 +3042,13 @@ function confirmarSerie3Digitos() {
     return;
   }
 
-  const locText = montarTextoLocalizacao(printer);
   const localizacaoEl = el("localizacao");
   if (localizacaoEl) {
-    localizacaoEl.value = locText;
+    localizacaoEl.value = montarTextoLocalizacao(printer);
   }
 
   fecharSerie3Digitos();
-  mostrarMensagem(`Localização selecionada: ${locText}`);
+  mostrarMensagem("Localização selecionada com sucesso.");
 }
 
 function aplicarTonerNoFormulario(toner) {
