@@ -9,6 +9,51 @@ if (!firebase.apps.length) {
 }
 const db = firebase.firestore();
 
+
+const BACKUP_KEYS_APP_BRAGA = {
+  stock: "appBraga_backup_stock",
+  historico: "appBraga_backup_historico",
+  pcs: "appBraga_backup_pcs",
+  manutencoes: "appBraga_backup_manutencoes"
+};
+
+function saveBackupAppBraga(key, data) {
+  try {
+    localStorage.setItem(key, JSON.stringify(data || []));
+  } catch (e) {
+    console.error("Erro backup local:", e);
+  }
+}
+
+function loadBackupAppBraga(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    console.error("Erro a ler backup local:", e);
+    return [];
+  }
+}
+
+function showBackupBadge() {
+  document.querySelectorAll(".version-pill").forEach(node => {
+    if (!node.dataset.backupShown) {
+      node.dataset.backupShown = "1";
+      node.innerHTML = `${node.textContent} <span class="backup-badge">Backup local</span>`;
+    }
+  });
+}
+
+function hideBackupBadge() {
+  document.querySelectorAll(".version-pill").forEach(node => {
+    if (node.dataset.backupShown === "1") {
+      node.dataset.backupShown = "";
+      node.textContent = node.textContent.replace(" Backup local", "").trim();
+      if (typeof APP_BRAGA_VERSION !== "undefined") node.textContent = APP_BRAGA_VERSION;
+    }
+  });
+}
+
 let stockGlobal = [];
 let historicoGlobal = [];
 let pcsGlobal = [];
@@ -1333,8 +1378,19 @@ db.collection("stock").orderBy("created", "desc").onSnapshot(snap => {
     stockGlobal.push(t);
   });
 
+  saveBackupAppBraga(BACKUP_KEYS_APP_BRAGA.stock, stockGlobal);
+  hideBackupBadge();
   renderDashboardCards(stockGlobal);
   renderStockCards(stockGlobal);
+  renderDashboardResumoInteligente();
+}, error => {
+  console.error(error);
+  stockGlobal = loadBackupAppBraga(BACKUP_KEYS_APP_BRAGA.stock);
+  setText("countStock", stockGlobal.length);
+  showBackupBadge();
+  renderDashboardCards(stockGlobal);
+  renderStockCards(stockGlobal);
+  renderDashboardResumoInteligente();
 });
 
 db.collection("historico").orderBy("created", "desc").onSnapshot(snap => {
@@ -1347,7 +1403,17 @@ db.collection("historico").orderBy("created", "desc").onSnapshot(snap => {
     historicoGlobal.push(t);
   });
 
+  saveBackupAppBraga(BACKUP_KEYS_APP_BRAGA.historico, historicoGlobal);
+  hideBackupBadge();
   renderHistoricoCards(historicoGlobal);
+  renderDashboardResumoInteligente();
+}, error => {
+  console.error(error);
+  historicoGlobal = loadBackupAppBraga(BACKUP_KEYS_APP_BRAGA.historico);
+  setText("countUsados", historicoGlobal.length);
+  showBackupBadge();
+  renderHistoricoCards(historicoGlobal);
+  renderDashboardResumoInteligente();
 });
 
 db.collection("pcs").orderBy("created", "desc").onSnapshot(snap => {
@@ -1360,6 +1426,14 @@ db.collection("pcs").orderBy("created", "desc").onSnapshot(snap => {
     pcsGlobal.push(d);
   });
 
+  saveBackupAppBraga(BACKUP_KEYS_APP_BRAGA.pcs, pcsGlobal);
+  hideBackupBadge();
+  renderPCCards(pcsGlobal);
+}, error => {
+  console.error(error);
+  pcsGlobal = loadBackupAppBraga(BACKUP_KEYS_APP_BRAGA.pcs);
+  setText("countPCs", pcsGlobal.length);
+  showBackupBadge();
   renderPCCards(pcsGlobal);
 });
 
@@ -1372,6 +1446,15 @@ db.collection("manutencoes").orderBy("created", "desc").onSnapshot(snap => {
     manutencoesGlobal.push(item);
   });
 
+  saveBackupAppBraga(BACKUP_KEYS_APP_BRAGA.manutencoes, manutencoesGlobal);
+  hideBackupBadge();
+  atualizarContadoresManutencao();
+  renderManutencoes(manutencoesGlobal);
+  renderImpressoras();
+}, error => {
+  console.error(error);
+  manutencoesGlobal = loadBackupAppBraga(BACKUP_KEYS_APP_BRAGA.manutencoes);
+  showBackupBadge();
   atualizarContadoresManutencao();
   renderManutencoes(manutencoesGlobal);
   renderImpressoras();
@@ -1382,6 +1465,90 @@ function atualizarContadoresManutencao() {
   setText("countManutPendentes", manutencoesGlobal.filter(i => i.estado === "Pendente").length);
   setText("countManutReparacao", manutencoesGlobal.filter(i => i.estado === "Em reparação").length);
   setText("countManutResolvidos", manutencoesGlobal.filter(i => i.estado === "Resolvido").length);
+}
+
+
+function getCriticalityBucketsAppBraga() {
+  let critical = 0;
+  let warning = 0;
+  let normal = 0;
+
+  impressorasData.forEach(item => {
+    const info = tonerInfoState[item.ip] || null;
+    const colors = Array.isArray(info?.colors) ? info.colors : [];
+    const monoPercent = typeof info?.percent === "number" ? info.percent : null;
+    const allPercents = colors.map(c => c.percent).filter(v => typeof v === "number");
+    if (!allPercents.length && monoPercent !== null) allPercents.push(monoPercent);
+
+    if (!allPercents.length) {
+      normal++;
+      return;
+    }
+
+    const minValue = Math.min(...allPercents);
+    if (minValue < 10) critical++;
+    else if (minValue <= 25) warning++;
+    else normal++;
+  });
+
+  return { critical, warning, normal };
+}
+
+function getTopLocalizacoesHistorico(limit = 3) {
+  const counts = {};
+  historicoGlobal.forEach(item => {
+    const key = String(item.localizacao || "Sem Localização");
+    counts[key] = (counts[key] || 0) + 1;
+  });
+  return Object.entries(counts)
+    .sort((a,b) => b[1] - a[1])
+    .slice(0, limit);
+}
+
+function getUltimosMovimentos(limit = 3) {
+  return [...historicoGlobal]
+    .sort((a,b) => {
+      const ad = a.created && a.created.seconds ? a.created.seconds : 0;
+      const bd = b.created && b.created.seconds ? b.created.seconds : 0;
+      return bd - ad;
+    })
+    .slice(0, limit);
+}
+
+function renderDashboardResumoInteligente() {
+  const host = el("dashboardResumoInteligente");
+  if (!host) return;
+
+  const buckets = getCriticalityBucketsAppBraga();
+  const topLocs = getTopLocalizacoesHistorico(3);
+  const ultimos = getUltimosMovimentos(3);
+
+  host.innerHTML = `
+    <div class="summary-grid">
+      <div class="summary-card">
+        <h4>Criticidade Real</h4>
+        <div class="summary-value">${buckets.critical}</div>
+        <div class="meta-line">Críticas &lt; 10%</div>
+      </div>
+      <div class="summary-card">
+        <h4>Atenção</h4>
+        <div class="summary-value">${buckets.warning}</div>
+        <div class="meta-line">Entre 10% e 25%</div>
+      </div>
+      <div class="summary-card">
+        <h4>Top Localizações</h4>
+        <ul class="summary-list">
+          ${topLocs.length ? topLocs.map(([k,v]) => `<li>${k} — ${v}</li>`).join("") : "<li>Sem dados</li>"}
+        </ul>
+      </div>
+      <div class="summary-card">
+        <h4>Últimos Movimentos</h4>
+        <ul class="summary-list">
+          ${ultimos.length ? ultimos.map(item => `<li>${item.equipamento || "-"} · ${item.cor || "-"} · ${item.localizacao || "-"}</li>`).join("") : "<li>Sem histórico</li>"}
+        </ul>
+      </div>
+    </div>
+  `;
 }
 
 function renderDashboardCards(items) {
@@ -2046,6 +2213,63 @@ async function testarTodasAsImpressoras() {
 
 window.testarTonerImpressora = testarTonerImpressora;
 
+
+function filtrarHistoricoPorImpressora(item) {
+  const serie = String(item.serie || "");
+  const loc = String(item.localizacao || "");
+  const arm = String(item.armazem || "");
+
+  return historicoGlobal.filter(h => {
+    const hLoc = String(h.localizacao || "");
+    const hEq = String(h.equipamento || "");
+    return hLoc.includes(serie) ||
+      hLoc.includes(loc) ||
+      (hLoc.includes(arm) && hLoc.includes(loc)) ||
+      normalizarTexto(hEq).includes(normalizarTexto(item.modelo));
+  });
+}
+
+function abrirHistoricoImpressora(item) {
+  const host = el("historicoImpressoraPanel");
+  if (!host) return;
+
+  const itens = filtrarHistoricoPorImpressora(item);
+  const ultimo = itens[0] || null;
+
+  host.innerHTML = `
+    <div class="printer-history-card">
+      <div class="section-header">
+        <div>
+          <h3>${item.modelo} — ${item.serie}</h3>
+          <p class="section-subtitle">${item.armazem} · ${item.localizacao}</p>
+        </div>
+      </div>
+
+      <div class="history-mini-grid">
+        <div class="summary-card">
+          <h4>Total de Toners</h4>
+          <div class="summary-value">${itens.length}</div>
+        </div>
+        <div class="summary-card">
+          <h4>Último Registo</h4>
+          <div class="meta-line">${ultimo ? `${ultimo.cor || "-"} · ${ultimo.data || "Sem Data"}` : "Sem registos"}</div>
+        </div>
+      </div>
+
+      <div class="printer-history-items">
+        ${itens.length ? itens.slice(0,8).map(h => `
+          <div class="printer-history-item">
+            <div class="meta-line">ID: <span class="meta-value">${h.idInterno || "-"}</span></div>
+            <div class="meta-line">Cor: <span class="meta-value">${h.cor || "-"}</span></div>
+            <div class="meta-line">Data: <span class="meta-value">${h.data || "Sem Data"}</span></div>
+            <div class="meta-line">Localização: <span class="meta-value">${h.localizacao || "Sem Localização"}</span></div>
+          </div>
+        `).join("") : `<div class="panel empty-state"><h3>Sem histórico para esta impressora</h3><p>Quando houver movimentos associados, aparecem aqui.</p></div>`}
+      </div>
+    </div>
+  `;
+}
+
 function renderImpressoras(lista = impressorasData) {
   const tbody = el("impressorasTableBody");
   if (!tbody) return;
@@ -2080,6 +2304,7 @@ function renderImpressoras(lista = impressorasData) {
           <div class="table-actions" style="margin-top:8px;">
             <button class="action-btn ip" onclick="abrirIP('${item.ip}')">Abrir IP</button>
             <button class="action-btn manut" onclick='abrirManutencaoDireta(${JSON.stringify(item)})'>Manutenção</button>
+            <button class="action-btn" onclick='abrirHistoricoImpressora(${JSON.stringify(item)})'>Histórico</button>
             <button class="action-btn" onclick="window.testarTonerImpressora('${item.ip}', '${tonerId}')">Testar toner</button>
           </div>
         </td>
@@ -2369,6 +2594,7 @@ function filtrarUsersComFiltros() {
    INIT
 ========================= */
 window.addEventListener("DOMContentLoaded", () => {
+  if (el("historicoImpressoraPanel") && impressorasData && impressorasData.length) { abrirHistoricoImpressora(impressorasData[0]); }
   const sw = el("darkSwitch");
 
   if (localStorage.getItem("modo") === "dark") {
@@ -2583,6 +2809,7 @@ renderImpressoras = function(lista = impressorasData) {
 };
 
 window.addEventListener("DOMContentLoaded", () => {
+  if (el("historicoImpressoraPanel") && impressorasData && impressorasData.length) { abrirHistoricoImpressora(impressorasData[0]); }
   bindPrintersFirebaseRealtime();
 });
 
