@@ -1105,3 +1105,9 @@ body.dark .app-version-mini {
 .barcode-learn-box {
   margin-bottom: 20px;
 }
+
+
+#dataFolha[readonly] {
+  opacity: 0.9;
+  background: rgba(148, 163, 184, 0.08);
+}

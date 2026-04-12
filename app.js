@@ -1306,6 +1306,7 @@ async function disponivel() {
       localizacao: loc || "Sem Localização",
       cor: corValue,
       data: dataValue || "Sem Data",
+      dataFolha: (el("dataFolha") && el("dataFolha").value) || "Sem Data da Folha",
       created: new Date()
     });
 
@@ -1313,6 +1314,7 @@ async function disponivel() {
     if (localizacao) localizacao.value = "";
     cor.value = "";
     if (data) data.value = "";
+    if (el("dataFolha")) el("dataFolha").value = "";
 
     mostrarMensagem("Toner adicionado com sucesso.");
   } catch (error) {
@@ -2664,8 +2666,24 @@ function aplicarDadosTonerStable(toner) {
 function extrairDadosEtiquetaOCRStable(texto) {
   const t = normalizarTextoOCRStable(texto);
 
-  const tkMatch = t.match(/TK-\d{4}[A-Z]?/);
-  const dataMatch = t.match(/\d{4}-\d{2}-\d{2}/);
+  let tonerCode = "";
+  const tkMatch = t.match(/TK[\s-]?(\d{4}[A-Z]?)/);
+  if (tkMatch) tonerCode = `TK-${tkMatch[1]}`;
+
+  let dataFolha = "";
+  const dataISO = t.match(/\d{4}-\d{2}-\d{2}/);
+  const dataPTSlash = t.match(/\d{2}\/\d{2}\/\d{4}/);
+  const dataPTHyphen = t.match(/\d{2}-\d{2}-\d{4}/);
+
+  if (dataISO) {
+    dataFolha = dataISO[0];
+  } else if (dataPTSlash) {
+    const [dd, mm, yyyy] = dataPTSlash[0].split("/");
+    dataFolha = `${yyyy}-${mm}-${dd}`;
+  } else if (dataPTHyphen) {
+    const [dd, mm, yyyy] = dataPTHyphen[0].split("-");
+    dataFolha = `${yyyy}-${mm}-${dd}`;
+  }
 
   let serieEncontrada = "";
   for (const item of impressorasData) {
@@ -2676,15 +2694,34 @@ function extrairDadosEtiquetaOCRStable(texto) {
     }
   }
 
-  const tonerCode = tkMatch ? tkMatch[0] : "";
-  const toner = tonerCode ? tonerMapStable[tonerCode] || null : null;
+  let equipamento = "";
+  let cor = "";
+
+  if (tonerCode && tonerMapStable[tonerCode]) {
+    equipamento = tonerMapStable[tonerCode].equipamento || "";
+    cor = tonerMapStable[tonerCode].cor || "";
+  }
+
+  if (!equipamento) {
+    if (t.includes("P3155DN")) equipamento = "P3155DN";
+    else if (t.includes("PA5500X")) equipamento = "PA5500x";
+    else if (t.includes("2554CI")) equipamento = "TASKalfa_255ci";
+  }
+
+  if (!cor && tonerCode) {
+    if (tonerCode.endsWith("Y")) cor = "Amarelo";
+    else if (tonerCode.endsWith("C")) cor = "Azul";
+    else if (tonerCode.endsWith("M")) cor = "Vermelho";
+    else cor = "Preto";
+  }
 
   return {
     tonerCode,
-    equipamento: toner ? toner.equipamento : "",
-    cor: toner ? toner.cor : "",
-    data: dataMatch ? dataMatch[0] : "",
-    serie: serieEncontrada
+    equipamento,
+    cor,
+    dataFolha,
+    serie: serieEncontrada,
+    textoNormalizado: t
   };
 }
 
@@ -2693,22 +2730,23 @@ function aplicarDadosOCRNoFormularioStable(dados) {
 
   if (dados.equipamento && el("equipamento")) el("equipamento").value = dados.equipamento;
   if (dados.cor && el("cor")) el("cor").value = dados.cor;
-  if (dados.data && el("data")) {
-    el("data").value = dados.data;
-  } else {
-    preencherDataAtualSeVaziaStable();
+
+  if (el("dataFolha")) {
+    el("dataFolha").value = dados.dataFolha || "";
   }
+
+  preencherDataAtualSeVaziaStable();
 
   if (dados.serie && el("localizacao")) {
     const printer = impressorasData.find(p => p.serie === dados.serie);
     if (printer) {
-      el("localizacao").value = montarTextoLocalizacaoStable(printer);
+      el("localizacao").value = `${printer.serie} - ${printer.armazem} - ${printer.localizacao}`;
     }
   } else if (dados.equipamento || dados.cor) {
     abrirSerie3DigitosStable();
   }
 
-  return !!(dados.equipamento || dados.cor || dados.data || dados.serie);
+  return !!(dados.tonerCode || dados.equipamento || dados.cor || dados.dataFolha || dados.serie);
 }
 
 function processarTextoLidoStable(textoLido) {
@@ -2799,7 +2837,7 @@ function abrirOCRStable() {
   input.click();
 }
 
-async function processarOCRInputStable(event) {
+async async function processarOCRInputStable(event) {
   const file = event && event.target && event.target.files ? event.target.files[0] : null;
   if (!file) return;
 
@@ -2812,7 +2850,7 @@ async function processarOCRInputStable(event) {
     mostrarOCRStatusStable("A ler a folha... pode demorar alguns segundos.");
     mostrarMensagem("A ler a folha...");
 
-    const result = await Tesseract.recognize(file, "eng");
+    const result = await Tesseract.recognize(file, "eng", { logger: () => {} });
     const texto = result && result.data ? result.data.text : "";
     const dados = extrairDadosEtiquetaOCRStable(texto);
     const ok = aplicarDadosOCRNoFormularioStable(dados);
@@ -2821,7 +2859,8 @@ async function processarOCRInputStable(event) {
       dados.tonerCode ? `Toner: ${dados.tonerCode}` : "",
       dados.equipamento ? `Equipamento: ${dados.equipamento}` : "",
       dados.cor ? `Cor: ${dados.cor}` : "",
-      dados.data ? `Data: ${dados.data}` : "",
+      dados.dataFolha ? `Data folha: ${dados.dataFolha}` : "",
+      el("data") && el("data").value ? `Data scan: ${el("data").value}` : "",
       dados.serie ? `Série: ${dados.serie}` : ""
     ].filter(Boolean).join(" | ");
 
