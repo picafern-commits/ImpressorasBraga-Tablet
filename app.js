@@ -3390,3 +3390,169 @@ window.addEventListener("DOMContentLoaded", () => {
     try { carregarPreferenciaAutoStock(); } catch (e) { console.error(e); }
   }, 100);
 });
+
+
+
+/* =========================
+   DASHBOARD INTELIGENTE COMPLETO
+========================= */
+function getResumoStockPorCodigoAppBraga() {
+  const mapa = {};
+  (stockGlobal || []).forEach(item => {
+    const codigo = String(item.codigo || item.codigoToner || item.toner || item.equipamento || "Sem Código");
+    if (!mapa[codigo]) {
+      mapa[codigo] = { codigo, total: 0, equipamento: item.equipamento || "", cor: item.cor || "" };
+    }
+    mapa[codigo].total += 1;
+  });
+  return Object.values(mapa).sort((a, b) => a.codigo.localeCompare(b.codigo));
+}
+
+function renderDashboardStatsTonersProf() {
+  const box = el("dashboardStatsToners");
+  if (!box) return;
+
+  const resumo = getResumoStockPorCodigoAppBraga();
+  const totalTipos = resumo.length;
+  const totalStock = (stockGlobal || []).length;
+  const totalHistorico = (historicoGlobal || []).length;
+  const ultimosHoje = (stockGlobal || []).filter(item => {
+    const data = String(item.data || "");
+    return data === new Date().toISOString().slice(0, 10);
+  }).length;
+
+  box.innerHTML = `
+    <div class="dashboard-mini-stat">
+      <div class="label">Total em stock</div>
+      <div class="value">${totalStock}</div>
+    </div>
+    <div class="dashboard-mini-stat">
+      <div class="label">Tipos de toner</div>
+      <div class="value">${totalTipos}</div>
+    </div>
+    <div class="dashboard-mini-stat">
+      <div class="label">Usados / histórico</div>
+      <div class="value">${totalHistorico}</div>
+    </div>
+    <div class="dashboard-mini-stat">
+      <div class="label">Entradas hoje</div>
+      <div class="value">${ultimosHoje}</div>
+    </div>
+  `;
+}
+
+function renderDashboardAlertasTonersProf() {
+  const box = el("dashboardAlertasToners");
+  if (!box) return;
+
+  const resumo = getResumoStockPorCodigoAppBraga();
+  const criticos = resumo.filter(r => r.total <= 1);
+  const avisos = resumo.filter(r => r.total > 1 && r.total <= 3);
+  const oks = resumo.filter(r => r.total > 3);
+
+  let html = "";
+
+  if (!resumo.length) {
+    html = `<div class="alerta-item"><h4>Sem dados</h4><p>Ainda não existem toners em stock.</p></div>`;
+  } else {
+    html += criticos.map(r => `
+      <div class="alerta-item critico">
+        <h4>🔴 ${r.codigo}</h4>
+        <p>${r.equipamento || "Sem equipamento"} • ${r.cor || "Sem cor"} • Apenas ${r.total} em stock</p>
+      </div>
+    `).join("");
+
+    html += avisos.map(r => `
+      <div class="alerta-item aviso">
+        <h4>🟡 ${r.codigo}</h4>
+        <p>${r.equipamento || "Sem equipamento"} • ${r.cor || "Sem cor"} • Restam ${r.total} em stock</p>
+      </div>
+    `).join("");
+
+    html += oks.slice(0, 6).map(r => `
+      <div class="alerta-item ok">
+        <h4>🟢 ${r.codigo}</h4>
+        <p>${r.equipamento || "Sem equipamento"} • ${r.cor || "Sem cor"} • ${r.total} em stock</p>
+      </div>
+    `).join("");
+  }
+
+  box.innerHTML = html;
+}
+
+function renderDashboardUltimosRegistosProf() {
+  const box = el("dashboardUltimosRegistos");
+  if (!box) return;
+
+  const ultimosStock = [...(stockGlobal || [])]
+    .sort((a, b) => {
+      const da = a.created?.seconds ? a.created.seconds : 0;
+      const db = b.created?.seconds ? b.created.seconds : 0;
+      return db - da;
+    })
+    .slice(0, 5);
+
+  const ultimosHistorico = [...(historicoGlobal || [])]
+    .sort((a, b) => {
+      const da = a.created?.seconds ? a.created.seconds : 0;
+      const db = b.created?.seconds ? b.created.seconds : 0;
+      return db - da;
+    })
+    .slice(0, 5);
+
+  let html = "";
+
+  html += ultimosStock.length ? `
+    <div class="ultimo-registo-item">
+      <strong>Últimos adicionados ao stock</strong>
+      ${ultimosStock.map(item => `
+        <div>${item.equipamento || "Sem equipamento"} • ${item.cor || "Sem cor"} • ${item.localizacao || "Sem localização"} • ${item.data || "Sem data"}</div>
+      `).join("")}
+    </div>
+  ` : `
+    <div class="ultimo-registo-item">
+      <strong>Últimos adicionados ao stock</strong>
+      <div>Sem registos.</div>
+    </div>
+  `;
+
+  html += ultimosHistorico.length ? `
+    <div class="ultimo-registo-item">
+      <strong>Últimos usados / histórico</strong>
+      ${ultimosHistorico.map(item => `
+        <div>${item.equipamento || "Sem equipamento"} • ${item.cor || "Sem cor"} • ${item.localizacao || "Sem localização"} • ${item.data || "Sem data"}</div>
+      `).join("")}
+    </div>
+  ` : `
+    <div class="ultimo-registo-item">
+      <strong>Últimos usados / histórico</strong>
+      <div>Sem registos.</div>
+    </div>
+  `;
+
+  box.innerHTML = html;
+}
+
+function renderDashboardInteligenteCompletoProf() {
+  renderDashboardStatsTonersProf();
+  renderDashboardAlertasTonersProf();
+  renderDashboardUltimosRegistosProf();
+}
+
+const __origRenderDashboardResumoInteligente = typeof renderDashboardResumoInteligente === "function"
+  ? renderDashboardResumoInteligente
+  : null;
+
+if (__origRenderDashboardResumoInteligente) {
+  renderDashboardResumoInteligente = function(...args) {
+    const r = __origRenderDashboardResumoInteligente.apply(this, args);
+    try { renderDashboardInteligenteCompletoProf(); } catch (e) { console.error(e); }
+    return r;
+  };
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  setTimeout(() => {
+    try { renderDashboardInteligenteCompletoProf(); } catch (e) { console.error(e); }
+  }, 700);
+});
