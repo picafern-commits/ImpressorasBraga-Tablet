@@ -9,51 +9,6 @@ if (!firebase.apps.length) {
 }
 const db = firebase.firestore();
 
-
-const BACKUP_KEYS_APP_BRAGA = {
-  stock: "appBraga_backup_stock",
-  historico: "appBraga_backup_historico",
-  pcs: "appBraga_backup_pcs",
-  manutencoes: "appBraga_backup_manutencoes"
-};
-
-function saveBackupAppBraga(key, data) {
-  try {
-    localStorage.setItem(key, JSON.stringify(data || []));
-  } catch (e) {
-    console.error("Erro backup local:", e);
-  }
-}
-
-function loadBackupAppBraga(key) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : [];
-  } catch (e) {
-    console.error("Erro a ler backup local:", e);
-    return [];
-  }
-}
-
-function showBackupBadge() {
-  document.querySelectorAll(".version-pill").forEach(node => {
-    if (!node.dataset.backupShown) {
-      node.dataset.backupShown = "1";
-      node.innerHTML = `${node.textContent} <span class="backup-badge">Backup local</span>`;
-    }
-  });
-}
-
-function hideBackupBadge() {
-  document.querySelectorAll(".version-pill").forEach(node => {
-    if (node.dataset.backupShown === "1") {
-      node.dataset.backupShown = "";
-      node.textContent = node.textContent.replace(" Backup local", "").trim();
-      if (typeof APP_BRAGA_VERSION !== "undefined") node.textContent = APP_BRAGA_VERSION;
-    }
-  });
-}
-
 let stockGlobal = [];
 let historicoGlobal = [];
 let pcsGlobal = [];
@@ -1378,19 +1333,8 @@ db.collection("stock").orderBy("created", "desc").onSnapshot(snap => {
     stockGlobal.push(t);
   });
 
-  saveBackupAppBraga(BACKUP_KEYS_APP_BRAGA.stock, stockGlobal);
-  hideBackupBadge();
   renderDashboardCards(stockGlobal);
   renderStockCards(stockGlobal);
-  renderDashboardResumoInteligente();
-}, error => {
-  console.error(error);
-  stockGlobal = loadBackupAppBraga(BACKUP_KEYS_APP_BRAGA.stock);
-  setText("countStock", stockGlobal.length);
-  showBackupBadge();
-  renderDashboardCards(stockGlobal);
-  renderStockCards(stockGlobal);
-  renderDashboardResumoInteligente();
 });
 
 db.collection("historico").orderBy("created", "desc").onSnapshot(snap => {
@@ -1403,17 +1347,7 @@ db.collection("historico").orderBy("created", "desc").onSnapshot(snap => {
     historicoGlobal.push(t);
   });
 
-  saveBackupAppBraga(BACKUP_KEYS_APP_BRAGA.historico, historicoGlobal);
-  hideBackupBadge();
   renderHistoricoCards(historicoGlobal);
-  renderDashboardResumoInteligente();
-}, error => {
-  console.error(error);
-  historicoGlobal = loadBackupAppBraga(BACKUP_KEYS_APP_BRAGA.historico);
-  setText("countUsados", historicoGlobal.length);
-  showBackupBadge();
-  renderHistoricoCards(historicoGlobal);
-  renderDashboardResumoInteligente();
 });
 
 db.collection("pcs").orderBy("created", "desc").onSnapshot(snap => {
@@ -1426,14 +1360,6 @@ db.collection("pcs").orderBy("created", "desc").onSnapshot(snap => {
     pcsGlobal.push(d);
   });
 
-  saveBackupAppBraga(BACKUP_KEYS_APP_BRAGA.pcs, pcsGlobal);
-  hideBackupBadge();
-  renderPCCards(pcsGlobal);
-}, error => {
-  console.error(error);
-  pcsGlobal = loadBackupAppBraga(BACKUP_KEYS_APP_BRAGA.pcs);
-  setText("countPCs", pcsGlobal.length);
-  showBackupBadge();
   renderPCCards(pcsGlobal);
 });
 
@@ -1446,15 +1372,6 @@ db.collection("manutencoes").orderBy("created", "desc").onSnapshot(snap => {
     manutencoesGlobal.push(item);
   });
 
-  saveBackupAppBraga(BACKUP_KEYS_APP_BRAGA.manutencoes, manutencoesGlobal);
-  hideBackupBadge();
-  atualizarContadoresManutencao();
-  renderManutencoes(manutencoesGlobal);
-  renderImpressoras();
-}, error => {
-  console.error(error);
-  manutencoesGlobal = loadBackupAppBraga(BACKUP_KEYS_APP_BRAGA.manutencoes);
-  showBackupBadge();
   atualizarContadoresManutencao();
   renderManutencoes(manutencoesGlobal);
   renderImpressoras();
@@ -1465,90 +1382,6 @@ function atualizarContadoresManutencao() {
   setText("countManutPendentes", manutencoesGlobal.filter(i => i.estado === "Pendente").length);
   setText("countManutReparacao", manutencoesGlobal.filter(i => i.estado === "Em reparação").length);
   setText("countManutResolvidos", manutencoesGlobal.filter(i => i.estado === "Resolvido").length);
-}
-
-
-function getCriticalityBucketsAppBraga() {
-  let critical = 0;
-  let warning = 0;
-  let normal = 0;
-
-  impressorasData.forEach(item => {
-    const info = tonerInfoState[item.ip] || null;
-    const colors = Array.isArray(info?.colors) ? info.colors : [];
-    const monoPercent = typeof info?.percent === "number" ? info.percent : null;
-    const allPercents = colors.map(c => c.percent).filter(v => typeof v === "number");
-    if (!allPercents.length && monoPercent !== null) allPercents.push(monoPercent);
-
-    if (!allPercents.length) {
-      normal++;
-      return;
-    }
-
-    const minValue = Math.min(...allPercents);
-    if (minValue < 10) critical++;
-    else if (minValue <= 25) warning++;
-    else normal++;
-  });
-
-  return { critical, warning, normal };
-}
-
-function getTopLocalizacoesHistorico(limit = 3) {
-  const counts = {};
-  historicoGlobal.forEach(item => {
-    const key = String(item.localizacao || "Sem Localização");
-    counts[key] = (counts[key] || 0) + 1;
-  });
-  return Object.entries(counts)
-    .sort((a,b) => b[1] - a[1])
-    .slice(0, limit);
-}
-
-function getUltimosMovimentos(limit = 3) {
-  return [...historicoGlobal]
-    .sort((a,b) => {
-      const ad = a.created && a.created.seconds ? a.created.seconds : 0;
-      const bd = b.created && b.created.seconds ? b.created.seconds : 0;
-      return bd - ad;
-    })
-    .slice(0, limit);
-}
-
-function renderDashboardResumoInteligente() {
-  const host = el("dashboardResumoInteligente");
-  if (!host) return;
-
-  const buckets = getCriticalityBucketsAppBraga();
-  const topLocs = getTopLocalizacoesHistorico(3);
-  const ultimos = getUltimosMovimentos(3);
-
-  host.innerHTML = `
-    <div class="summary-grid">
-      <div class="summary-card">
-        <h4>Criticidade Real</h4>
-        <div class="summary-value">${buckets.critical}</div>
-        <div class="meta-line">Críticas &lt; 10%</div>
-      </div>
-      <div class="summary-card">
-        <h4>Atenção</h4>
-        <div class="summary-value">${buckets.warning}</div>
-        <div class="meta-line">Entre 10% e 25%</div>
-      </div>
-      <div class="summary-card">
-        <h4>Top Localizações</h4>
-        <ul class="summary-list">
-          ${topLocs.length ? topLocs.map(([k,v]) => `<li>${k} — ${v}</li>`).join("") : "<li>Sem dados</li>"}
-        </ul>
-      </div>
-      <div class="summary-card">
-        <h4>Últimos Movimentos</h4>
-        <ul class="summary-list">
-          ${ultimos.length ? ultimos.map(item => `<li>${item.equipamento || "-"} · ${item.cor || "-"} · ${item.localizacao || "-"}</li>`).join("") : "<li>Sem histórico</li>"}
-        </ul>
-      </div>
-    </div>
-  `;
 }
 
 function renderDashboardCards(items) {
@@ -2213,63 +2046,6 @@ async function testarTodasAsImpressoras() {
 
 window.testarTonerImpressora = testarTonerImpressora;
 
-
-function filtrarHistoricoPorImpressora(item) {
-  const serie = String(item.serie || "");
-  const loc = String(item.localizacao || "");
-  const arm = String(item.armazem || "");
-
-  return historicoGlobal.filter(h => {
-    const hLoc = String(h.localizacao || "");
-    const hEq = String(h.equipamento || "");
-    return hLoc.includes(serie) ||
-      hLoc.includes(loc) ||
-      (hLoc.includes(arm) && hLoc.includes(loc)) ||
-      normalizarTexto(hEq).includes(normalizarTexto(item.modelo));
-  });
-}
-
-function abrirHistoricoImpressora(item) {
-  const host = el("historicoImpressoraPanel");
-  if (!host) return;
-
-  const itens = filtrarHistoricoPorImpressora(item);
-  const ultimo = itens[0] || null;
-
-  host.innerHTML = `
-    <div class="printer-history-card">
-      <div class="section-header">
-        <div>
-          <h3>${item.modelo} — ${item.serie}</h3>
-          <p class="section-subtitle">${item.armazem} · ${item.localizacao}</p>
-        </div>
-      </div>
-
-      <div class="history-mini-grid">
-        <div class="summary-card">
-          <h4>Total de Toners</h4>
-          <div class="summary-value">${itens.length}</div>
-        </div>
-        <div class="summary-card">
-          <h4>Último Registo</h4>
-          <div class="meta-line">${ultimo ? `${ultimo.cor || "-"} · ${ultimo.data || "Sem Data"}` : "Sem registos"}</div>
-        </div>
-      </div>
-
-      <div class="printer-history-items">
-        ${itens.length ? itens.slice(0,8).map(h => `
-          <div class="printer-history-item">
-            <div class="meta-line">ID: <span class="meta-value">${h.idInterno || "-"}</span></div>
-            <div class="meta-line">Cor: <span class="meta-value">${h.cor || "-"}</span></div>
-            <div class="meta-line">Data: <span class="meta-value">${h.data || "Sem Data"}</span></div>
-            <div class="meta-line">Localização: <span class="meta-value">${h.localizacao || "Sem Localização"}</span></div>
-          </div>
-        `).join("") : `<div class="panel empty-state"><h3>Sem histórico para esta impressora</h3><p>Quando houver movimentos associados, aparecem aqui.</p></div>`}
-      </div>
-    </div>
-  `;
-}
-
 function renderImpressoras(lista = impressorasData) {
   const tbody = el("impressorasTableBody");
   if (!tbody) return;
@@ -2304,7 +2080,6 @@ function renderImpressoras(lista = impressorasData) {
           <div class="table-actions" style="margin-top:8px;">
             <button class="action-btn ip" onclick="abrirIP('${item.ip}')">Abrir IP</button>
             <button class="action-btn manut" onclick='abrirManutencaoDireta(${JSON.stringify(item)})'>Manutenção</button>
-            <button class="action-btn" onclick='abrirHistoricoImpressora(${JSON.stringify(item)})'>Histórico</button>
             <button class="action-btn" onclick="window.testarTonerImpressora('${item.ip}', '${tonerId}')">Testar toner</button>
           </div>
         </td>
@@ -2594,7 +2369,6 @@ function filtrarUsersComFiltros() {
    INIT
 ========================= */
 window.addEventListener("DOMContentLoaded", () => {
-  if (el("historicoImpressoraPanel") && impressorasData && impressorasData.length) { abrirHistoricoImpressora(impressorasData[0]); }
   const sw = el("darkSwitch");
 
   if (localStorage.getItem("modo") === "dark") {
@@ -2809,34 +2583,13 @@ renderImpressoras = function(lista = impressorasData) {
 };
 
 window.addEventListener("DOMContentLoaded", () => {
-  if (el("historicoImpressoraPanel") && impressorasData && impressorasData.length) { abrirHistoricoImpressora(impressorasData[0]); }
   bindPrintersFirebaseRealtime();
 });
 
 
 
 /* =========================
-   VERSÃO / ONLINE-OFFLINE
-========================= */
-const APP_BRAGA_VERSION = "v1.8 Premium";
-
-function atualizarEstadoLigacaoAppBraga() {
-  const online = navigator.onLine;
-  document.querySelectorAll(".status-pill").forEach(node => {
-    node.textContent = online ? "Sistema Online" : "Sistema Offline";
-    node.classList.toggle("offline", !online);
-  });
-  document.querySelectorAll(".version-pill").forEach(node => {
-    node.textContent = APP_BRAGA_VERSION;
-  });
-}
-
-window.addEventListener("online", atualizarEstadoLigacaoAppBraga);
-window.addEventListener("offline", atualizarEstadoLigacaoAppBraga);
-document.addEventListener("DOMContentLoaded", atualizarEstadoLigacaoAppBraga);
-
-/* =========================
-   ADD TONER - ESTÁVEL
+   ADD TONER - OCR + SCANNER ESTÁVEL
 ========================= */
 const tonerMapStable = {
   "TK-3190": { equipamento: "P3155DN", cor: "Preto", codigo: "TK-3190" },
@@ -2861,8 +2614,6 @@ function normalizarTextoOCRStable(texto) {
   return String(texto || "")
     .replace(/[\r\n]+/g, " ")
     .replace(/\s+/g, " ")
-    .replace(/—/g, "-")
-    .replace(/_/g, "-")
     .trim()
     .toUpperCase();
 }
@@ -2969,7 +2720,8 @@ function extrairDadosEtiquetaOCRStable(texto) {
     equipamento,
     cor,
     dataFolha,
-    serie: serieEncontrada
+    serie: serieEncontrada,
+    textoNormalizado: t
   };
 }
 
@@ -2988,7 +2740,7 @@ function aplicarDadosOCRNoFormularioStable(dados) {
   if (dados.serie && el("localizacao")) {
     const printer = impressorasData.find(p => p.serie === dados.serie);
     if (printer) {
-      el("localizacao").value = montarTextoLocalizacaoStable(printer);
+      el("localizacao").value = `${printer.serie} - ${printer.armazem} - ${printer.localizacao}`;
     }
   } else if (dados.equipamento || dados.cor) {
     abrirSerie3DigitosStable();
@@ -3001,10 +2753,9 @@ function processarTextoLidoStable(textoLido) {
   const bruto = String(textoLido || "");
   const normal = normalizarTextoOCRStable(bruto);
 
-  const tkMatch = normal.match(/TK[\s-]?(\d{4}[A-Z]?)/);
+  const tkMatch = normal.match(/TK-\d{4}[A-Z]?/);
   if (tkMatch) {
-    const tk = `TK-${tkMatch[1]}`;
-    const toner = tonerMapStable[tk] || null;
+    const toner = tonerMapStable[tkMatch[0]] || null;
     if (toner) {
       aplicarDadosTonerStable(toner);
       mostrarMensagem(`Toner identificado: ${toner.codigo}`);
@@ -3086,7 +2837,7 @@ function abrirOCRStable() {
   input.click();
 }
 
-async function processarOCRInputStable(event) {
+async async function processarOCRInputStable(event) {
   const file = event && event.target && event.target.files ? event.target.files[0] : null;
   if (!file) return;
 
@@ -3115,9 +2866,6 @@ async function processarOCRInputStable(event) {
 
     mostrarOCRStatusStable(resumo || "A folha foi lida, mas não encontrei dados suficientes.");
     mostrarMensagem(ok ? "Folha lida com sucesso." : "Não encontrei dados suficientes na folha.", ok ? "sucesso" : "erro");
-    if (ok && dados.serie && dados.equipamento) {
-      await gerarWordEtiquetaFromForm(true);
-    }
   } catch (e) {
     console.error("Erro OCR:", e);
     mostrarOCRStatusStable("Erro ao ler a folha.");
@@ -3155,142 +2903,229 @@ window.confirmarSerie3Digitos = confirmarSerie3DigitosStable;
 window.fecharSerie3Digitos = fecharSerie3DigitosStable;
 
 
+
 /* =========================
-   ETIQUETA WORD AUTOMÁTICA
+   PACK PRO ESTÁVEL APP Braga Tablet
 ========================= */
-function formatDatePTAppBraga(valor) {
-  const raw = String(valor || "").trim();
-  if (!raw) return "";
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-    const [yyyy, mm, dd] = raw.split("-");
-    return `${dd}/${mm}/${yyyy}`;
-  }
-
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) {
-    return raw;
-  }
-
-  return raw;
+function paginaAtualEstavel() {
+  const path = (window.location.pathname || "").toLowerCase();
+  const file = path.split("/").pop() || "";
+  return file || "index.html";
 }
 
-function extrairDadosEtiquetaWord() {
-  const loc = (el("localizacao") && el("localizacao").value) || "";
-  const dataFolha = (el("dataFolha") && el("dataFolha").value) || "";
-  const dataScan = (el("data") && el("data").value) || "";
+function podeMostrarAlertasCriticosAqui() {
+  const file = paginaAtualEstavel();
+  return file === "index.html" || file === "impressoras.html";
+}
 
-  let serie = "";
-  let localCurto = "";
-  let armazem = "";
+function autoStockAtivo() {
+  return !!(el("autoStockToggle") && el("autoStockToggle").checked);
+}
 
-  const parts = loc.split(" - ").map(v => v.trim()).filter(Boolean);
-  if (parts.length >= 3) {
-    serie = parts[0] || "";
-    armazem = parts[1] || "";
-    localCurto = parts.slice(2).join(" - ");
+function modoContinuoAtivo() {
+  return !!(el("modoContinuoToggle") && el("modoContinuoToggle").checked);
+}
+
+function guardarPreferenciasScanner() {
+  try {
+    localStorage.setItem("appBraga_autoStock", autoStockAtivo() ? "1" : "0");
+    localStorage.setItem("appBraga_modoContinuo", modoContinuoAtivo() ? "1" : "0");
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function carregarPreferenciasScanner() {
+  try {
+    if (el("autoStockToggle")) el("autoStockToggle").checked = localStorage.getItem("appBraga_autoStock") === "1";
+    if (el("modoContinuoToggle")) el("modoContinuoToggle").checked = localStorage.getItem("appBraga_modoContinuo") === "1";
+    if (el("autoStockToggle")) el("autoStockToggle").addEventListener("change", guardarPreferenciasScanner);
+    if (el("modoContinuoToggle")) el("modoContinuoToggle").addEventListener("change", guardarPreferenciasScanner);
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function mostrarPainelAlertasResumo() {
+  const box = el("painelAlertasResumo");
+  if (!box) return;
+
+  const resumo = impressorasData.map(item => {
+    const info = tonerInfoState[item.ip] || null;
+    const colors = Array.isArray(info?.colors) ? info.colors : [];
+    const criticos = colors.filter(c => typeof c.percent === "number" && c.percent <= 10);
+    const avisos = colors.filter(c => typeof c.percent === "number" && c.percent > 10 && c.percent <= 20);
+    return { item, criticos, avisos };
+  });
+
+  const criticalItems = resumo.filter(r => r.criticos.length > 0);
+  const warnItems = resumo.filter(r => r.criticos.length === 0 && r.avisos.length > 0);
+
+  let html = "";
+  html += `<div class="dashboard-priority-box"><div class="dashboard-priority-text"><span class="alert-chip-critical">Críticos: ${criticalItems.length}</span> <span class="alert-chip-warning">Atenção: ${warnItems.length}</span> <span class="alert-chip-ok">OK: ${impressorasData.length - criticalItems.length - warnItems.length}</span></div></div>`;
+
+  if (criticalItems.length) {
+    html += criticalItems.slice(0, 8).map(r => `<div class="dashboard-card dashboard-critical-card"><strong>${r.item.modelo} - ${r.item.localizacao}</strong><div>${r.criticos.map(c => `${c.label}: ${c.percent}%`).join(" | ")}</div></div>`).join("");
   } else {
-    localCurto = loc || "Sem Localização";
+    html += `<div class="dashboard-card"><strong>Sem críticos</strong><div>Não existem impressoras abaixo de 10% neste momento.</div></div>`;
+  }
+  box.innerHTML = html;
+}
+
+function mostrarPainelAlertasImpressoras() {
+  const box = el("painelImpressorasAlertas");
+  if (!box) return;
+  const rows = impressorasData.map(item => {
+    const info = tonerInfoState[item.ip] || null;
+    const colors = Array.isArray(info?.colors) ? info.colors : [];
+    const issues = colors.filter(c => typeof c.percent === "number" && c.percent <= 20);
+    return { item, issues };
+  }).filter(r => r.issues.length);
+
+  box.innerHTML = rows.length
+    ? rows.slice(0, 12).map(r => `<div class="dashboard-card dashboard-warning-card"><strong>${r.item.modelo} - ${r.item.localizacao}</strong><div>${r.issues.map(i => `${i.label}: ${i.percent}%`).join(" | ")}</div></div>`).join("")
+    : `<div class="dashboard-card"><strong>Sem alertas</strong><div>Não existem alertas ativos para mostrar.</div></div>`;
+}
+
+function maybeNotifyCriticalSupply(ip, info) {
+  if (!info) return;
+
+  const printer = impressorasData.find(i => i.ip === ip);
+  const printerLabel = printer ? `${printer.modelo} - ${printer.localizacao}` : ip;
+  const issues = [];
+
+  (info.colors || []).forEach((item) => {
+    if (typeof item.percent === "number" && item.percent <= 20) {
+      issues.push(`${item.label}: ${item.percent}%`);
+    }
+  });
+
+  if (info.residue && typeof info.residue.percent === "number" && info.residue.percent >= 80) {
+    issues.push(`${info.residue.label || "Resíduo"}: ${info.residue.percent}%`);
   }
 
-  const dataEtiqueta = formatDatePTAppBraga(dataFolha || dataScan);
+  const key = issues.join(" | ");
+  if (!key) {
+    tonerAlertState[ip] = "";
+    return;
+  }
+  if (tonerAlertState[ip] === key) return;
+  tonerAlertState[ip] = key;
 
-  return {
-    serie: serie || "SEM SÉRIE",
-    localCurto: localCurto || "Sem Localização",
-    armazem: armazem || "",
-    dataEtiqueta: dataEtiqueta || formatDatePTAppBraga(dataScan) || "Sem Data"
+  if (!podeMostrarAlertasCriticosAqui()) return;
+
+  const message = `Estado crítico em ${printerLabel} — ${key}`;
+  mostrarMensagem(message, "erro");
+
+  if ("Notification" in window) {
+    if (Notification.permission === "granted") {
+      new Notification("Alerta de consumíveis", { body: message });
+    }
+  }
+}
+
+function exportar() {
+  if (!stockGlobal.length) {
+    mostrarMensagem("Não há dados para exportar.", "erro");
+    return;
+  }
+
+  let csv = "ID;Equipamento;Localização;Cor;Data do Scan;Data da Folha\\n";
+  stockGlobal.forEach(t => {
+    csv += `${t.idInterno || ""};${t.equipamento || ""};${t.localizacao || ""};${t.cor || ""};${t.data || ""};${t.dataFolha || ""}\\n`;
+  });
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "stock_app_braga.csv";
+  a.click();
+}
+
+function exportarHistorico() {
+  if (!historicoGlobal.length) {
+    mostrarMensagem("Não há histórico para exportar.", "erro");
+    return;
+  }
+
+  let csv = "ID;Equipamento;Localização;Cor;Data do Scan;Data da Folha\\n";
+  historicoGlobal.forEach(t => {
+    csv += `${t.idInterno || ""};${t.equipamento || ""};${t.localizacao || ""};${t.cor || ""};${t.data || ""};${t.dataFolha || ""}\\n`;
+  });
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "historico_app_braga.csv";
+  a.click();
+}
+
+function confirmarSerie3DigitosStable() {
+  const valor = ((el("serial3Input") && el("serial3Input").value) || "").trim().toUpperCase();
+
+  if (valor.length !== 3) {
+    mostrarMensagem("Introduza exatamente 3 dígitos.", "erro");
+    return;
+  }
+
+  const printer = procurarImpressoraPorUltimos3DigitosStable(valor);
+  if (!printer) {
+    mostrarMensagem("Nenhuma impressora encontrada com esses 3 dígitos.", "erro");
+    return;
+  }
+
+  if (el("localizacao")) {
+    el("localizacao").value = montarTextoLocalizacaoStable(printer);
+  }
+
+  fecharSerie3DigitosStable();
+  mostrarMensagem("Localização selecionada com sucesso.");
+
+  if (autoStockAtivo() && typeof disponivel === "function") {
+    Promise.resolve(disponivel()).then(() => {
+      if (modoContinuoAtivo()) {
+        setTimeout(() => startScannerStable(), 500);
+      }
+    }).catch(err => console.error(err));
+  }
+}
+
+window.addEventListener("error", (event) => {
+  console.error("Erro global:", event.error || event.message);
+});
+
+window.addEventListener("unhandledrejection", (event) => {
+  console.error("Promise rejeitada:", event.reason);
+});
+
+window.addEventListener("DOMContentLoaded", () => {
+  carregarPreferenciasScanner();
+  setTimeout(() => {
+    try {
+      mostrarPainelAlertasResumo();
+      mostrarPainelAlertasImpressoras();
+    } catch (e) {
+      console.error(e);
+    }
+  }, 600);
+});
+
+const _renderDashboardCardsOriginal = typeof renderDashboardCards === "function" ? renderDashboardCards : null;
+if (_renderDashboardCardsOriginal) {
+  renderDashboardCards = function(...args) {
+    const r = _renderDashboardCardsOriginal.apply(this, args);
+    try { mostrarPainelAlertasResumo(); } catch (e) { console.error(e); }
+    return r;
   };
 }
 
-async function gerarWordEtiquetaFromForm(auto = false) {
-  try {
-    if (typeof docx === "undefined") {
-      mostrarMensagem("Biblioteca Word não carregada.", "erro");
-      return;
-    }
-
-    const dados = extrairDadosEtiquetaWord();
-
-    if (!dados.localCurto || !dados.serie) {
-      mostrarMensagem("Faltam dados para gerar a etiqueta Word.", "erro");
-      return;
-    }
-
-    const {
-      Document,
-      Packer,
-      Paragraph,
-      AlignmentType,
-      TextRun,
-      HeadingLevel
-    } = docx;
-
-    const doc = new Document({
-      creator: "App Braga",
-      title: "Etiqueta Toner",
-      description: "Etiqueta gerada automaticamente pelo scan OCR",
-      sections: [
-        {
-          properties: {},
-          children: [
-            new Paragraph({
-              alignment: AlignmentType.CENTER,
-              spacing: { before: 3200, after: 500 },
-              children: [
-                new TextRun({
-                  text: dados.localCurto,
-                  bold: true,
-                  size: 42
-                })
-              ]
-            }),
-            new Paragraph({
-              alignment: AlignmentType.CENTER,
-              spacing: { before: 200, after: 2800 },
-              children: [
-                new TextRun({
-                  text: dados.serie,
-                  bold: true,
-                  size: 64
-                })
-              ]
-            }),
-            new Paragraph({
-              alignment: AlignmentType.CENTER,
-              spacing: { before: 0, after: 200 },
-              children: [
-                new TextRun({
-                  text: dados.dataEtiqueta,
-                  bold: true,
-                  size: 56
-                })
-              ]
-            })
-          ]
-        }
-      ]
-    });
-
-    const blob = await Packer.toBlob(doc);
-    const fileName = `Etiqueta_${dados.localCurto.replace(/\s+/g, "_")}_${dados.serie}.docx`;
-
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      URL.revokeObjectURL(a.href);
-      a.remove();
-    }, 1200);
-
-    if (!auto) {
-      mostrarMensagem("Etiqueta Word gerada com sucesso.");
-    }
-  } catch (error) {
-    console.error("Erro ao gerar Word:", error);
-    mostrarMensagem("Erro ao gerar a etiqueta Word.", "erro");
-  }
+const _renderImpressorasOriginal = typeof renderImpressoras === "function" ? renderImpressoras : null;
+if (_renderImpressorasOriginal) {
+  renderImpressoras = function(...args) {
+    const r = _renderImpressorasOriginal.apply(this, args);
+    try { mostrarPainelAlertasImpressoras(); } catch (e) { console.error(e); }
+    return r;
+  };
 }
 
-window.gerarWordEtiquetaFromForm = gerarWordEtiquetaFromForm;
+window.exportarHistorico = exportarHistorico;
