@@ -2589,7 +2589,27 @@ window.addEventListener("DOMContentLoaded", () => {
 
 
 /* =========================
-   ADD TONER - OCR + SCANNER ESTÁVEL
+   VERSÃO / ONLINE-OFFLINE
+========================= */
+const APP_BRAGA_VERSION = "v1.4 Premium";
+
+function atualizarEstadoLigacaoAppBraga() {
+  const online = navigator.onLine;
+  document.querySelectorAll(".status-pill").forEach(node => {
+    node.textContent = online ? "Sistema Online" : "Sistema Offline";
+    node.classList.toggle("offline", !online);
+  });
+  document.querySelectorAll(".version-pill").forEach(node => {
+    node.textContent = APP_BRAGA_VERSION;
+  });
+}
+
+window.addEventListener("online", atualizarEstadoLigacaoAppBraga);
+window.addEventListener("offline", atualizarEstadoLigacaoAppBraga);
+document.addEventListener("DOMContentLoaded", atualizarEstadoLigacaoAppBraga);
+
+/* =========================
+   ADD TONER - ESTÁVEL
 ========================= */
 const tonerMapStable = {
   "TK-3190": { equipamento: "P3155DN", cor: "Preto", codigo: "TK-3190" },
@@ -2614,6 +2634,8 @@ function normalizarTextoOCRStable(texto) {
   return String(texto || "")
     .replace(/[\r\n]+/g, " ")
     .replace(/\s+/g, " ")
+    .replace(/—/g, "-")
+    .replace(/_/g, "-")
     .trim()
     .toUpperCase();
 }
@@ -2720,8 +2742,7 @@ function extrairDadosEtiquetaOCRStable(texto) {
     equipamento,
     cor,
     dataFolha,
-    serie: serieEncontrada,
-    textoNormalizado: t
+    serie: serieEncontrada
   };
 }
 
@@ -2740,7 +2761,7 @@ function aplicarDadosOCRNoFormularioStable(dados) {
   if (dados.serie && el("localizacao")) {
     const printer = impressorasData.find(p => p.serie === dados.serie);
     if (printer) {
-      el("localizacao").value = `${printer.serie} - ${printer.armazem} - ${printer.localizacao}`;
+      el("localizacao").value = montarTextoLocalizacaoStable(printer);
     }
   } else if (dados.equipamento || dados.cor) {
     abrirSerie3DigitosStable();
@@ -2753,9 +2774,10 @@ function processarTextoLidoStable(textoLido) {
   const bruto = String(textoLido || "");
   const normal = normalizarTextoOCRStable(bruto);
 
-  const tkMatch = normal.match(/TK-\d{4}[A-Z]?/);
+  const tkMatch = normal.match(/TK[\s-]?(\d{4}[A-Z]?)/);
   if (tkMatch) {
-    const toner = tonerMapStable[tkMatch[0]] || null;
+    const tk = `TK-${tkMatch[1]}`;
+    const toner = tonerMapStable[tk] || null;
     if (toner) {
       aplicarDadosTonerStable(toner);
       mostrarMensagem(`Toner identificado: ${toner.codigo}`);
@@ -2837,7 +2859,7 @@ function abrirOCRStable() {
   input.click();
 }
 
-async async function processarOCRInputStable(event) {
+async function processarOCRInputStable(event) {
   const file = event && event.target && event.target.files ? event.target.files[0] : null;
   if (!file) return;
 

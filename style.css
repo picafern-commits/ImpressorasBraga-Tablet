@@ -1075,6 +1075,12 @@ body.dark .app-version-mini {
 }
 
 
+.status-pill.offline {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.22);
+}
+
 .scanner-box {
   width: 100%;
   max-width: 520px;
@@ -1101,11 +1107,6 @@ body.dark .app-version-mini {
   font-size: 14px;
   line-height: 1.4;
 }
-
-.barcode-learn-box {
-  margin-bottom: 20px;
-}
-
 
 #dataFolha[readonly] {
   opacity: 0.9;
