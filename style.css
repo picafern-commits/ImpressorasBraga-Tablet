@@ -1196,80 +1196,64 @@ body.dark .app-version-mini {
 }
 
 
-.previsoes-panel {
-  margin-bottom: 18px;
+#btnMigrarPortas {
+  white-space: nowrap;
 }
 
-.previsao-card {
-  padding: 16px;
-  border-radius: 16px;
-  border: 1px solid var(--border);
-  background: var(--card);
-  box-shadow: var(--shadow);
-}
 
-.previsao-card h4 {
-  margin: 0 0 8px;
-}
-
-.previsao-card p {
-  margin: 0;
-  color: var(--muted);
-}
-
-.previsao-card.critico {
-  border-color: rgba(239, 68, 68, 0.25);
-  background: rgba(239, 68, 68, 0.05);
-}
-
-.previsao-card.aviso {
-  border-color: rgba(245, 158, 11, 0.25);
-  background: rgba(245, 158, 11, 0.05);
-}
-
-.previsao-card.ok {
-  border-color: rgba(34, 197, 94, 0.25);
-  background: rgba(34, 197, 94, 0.05);
-}
-
-.modal-porta {
+.modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.5);
-  display: none;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
-  padding: 16px;
+  z-index: 5000;
+  padding: 20px;
 }
-.modal-porta-card {
-  width: min(720px, 100%);
+
+.modal-card {
+  width: min(760px, 100%);
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 20px;
   box-shadow: var(--shadow);
-  padding: 18px;
+  padding: 22px;
 }
+
+.primary-btn,
+.secondary-btn,
+.small-btn,
+.action-btn,
+.top-link,
+button {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, opacity 0.18s ease;
+}
+
+.primary-btn:hover,
+.secondary-btn:hover,
+.small-btn:hover,
+.action-btn:hover,
+.top-link:hover,
+button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.10);
+}
+
+.primary-btn:hover {
+  background: var(--primary-hover);
+}
+
+.secondary-btn:hover,
+.small-btn:hover,
+.action-btn:hover,
+.top-link:hover {
+  opacity: 0.95;
+}
+
 .porta-actions {
   display: flex;
   gap: 8px;
   margin-top: 12px;
   flex-wrap: wrap;
-}
-.porta-actions button {
-  min-height: 36px;
-  padding: 0 12px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: rgba(255,255,255,0.04);
-  color: var(--text);
-  cursor: pointer;
-  font-weight: 700;
-}
-.porta-actions button:hover {
-  opacity: 0.92;
-}
-
-.porta-card-inside .porta-actions {
-  opacity: 1;
 }

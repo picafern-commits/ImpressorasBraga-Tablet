@@ -184,7 +184,7 @@ const pistolasData = [
 /* =========================
    DADOS PORTAS DE REDE
 ========================= */
-let portasData = [
+const portasData = [
   { porta: "127", local: "Ilha 01", user: "Mesa 01", equipamento: "", ip: "" },
   { porta: "126", local: "Ilha 01", user: "Mesa 01", equipamento: "Computador", ip: "192.168.10.101" },
 
@@ -2451,18 +2451,18 @@ function atualizarContadoresPortas(lista = portasData) {
   setText("countPortasSemUser", semUser);
 }
 
+
 function renderPortas(lista = portasData) {
   const container = el("listaPortas");
   if (!container) return;
 
   atualizarContadoresPortas(lista);
 
-  container.innerHTML = lista.map(p => {
+  container.innerHTML = lista.map((p, index) => {
     const estado = estadoPorta(p);
-    const cardClass = PORTAS_ACTION_STYLE === "hover" ? "porta-card-hover" : "porta-card-inside";
-    const idAttr = p.idDoc ? p.idDoc : "";
+    const ref = p.idDoc ? `'${p.idDoc}'` : index;
     return `
-      <div class="pc-card ${cardClass}">
+      <div class="pc-card">
         <div class="pc-name">Porta ${p.porta || "-"}</div>
         <div class="meta-line">Local: <span class="meta-value">${p.local || "-"}</span></div>
         <div class="meta-line">User: <span class="meta-value">${p.user || "-"}</span></div>
@@ -2470,8 +2470,7 @@ function renderPortas(lista = portasData) {
         <div class="meta-line">IP: <span class="meta-value">${p.ip ? `<a href="http://${p.ip}" target="_blank">${p.ip}</a>` : "-"}</span></div>
         <div class="meta-line">Estado: <span class="meta-value">${badgePorta(estado)}</span></div>
         <div class="porta-actions">
-          <button onclick="editarPortaFirebase('${idAttr}')">Editar</button>
-          <button onclick="apagarPortaFirebase('${idAttr}')">Apagar</button>
+          <button class="secondary-btn" onclick="editarPorta(${ref})">Editar</button>
         </div>
       </div>
     `;
@@ -3304,267 +3303,144 @@ window.gerarWordEtiquetaFromForm = gerarWordEtiquetaFromForm;
 
 
 /* =========================
-   PREVISÕES POR IMPRESSORA
+   PORTAS FIREBASE FALLBACK + MIGRAÇÃO
 ========================= */
-function parseDataAppBraga(valor) {
-  const v = String(valor || "").trim();
-  if (!v) return null;
 
-  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
-    const d = new Date(v + "T00:00:00");
-    return isNaN(d.getTime()) ? null : d;
+let portaEditRef = null;
+
+function encontrarPortaPorRef(ref) {
+  if (typeof ref === "string") {
+    return portasData.find(p => p.idDoc === ref) || null;
   }
-
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(v)) {
-    const [dd, mm, yyyy] = v.split("/");
-    const d = new Date(`${yyyy}-${mm}-${dd}T00:00:00`);
-    return isNaN(d.getTime()) ? null : d;
-  }
-
-  return null;
+  return portasData[Number(ref)] || null;
 }
 
-function diffDiasAppBraga(a, b) {
-  const ms = Math.abs(b.getTime() - a.getTime());
-  return Math.round(ms / 86400000);
-}
-
-function localizarImpressoraDeRegisto(registo) {
-  const loc = String(registo?.localizacao || "").toUpperCase();
-  if (!loc) return null;
-
-  // prioridade à série completa
-  let printer = impressorasData.find(p => loc.includes(String(p.serie || "").toUpperCase()));
-  if (printer) return printer;
-
-  // fallback por localização simples
-  printer = impressorasData.find(p => String(p.localizacao || "").toUpperCase() === loc);
-  if (printer) return printer;
-
-  // fallback por texto contido
-  printer = impressorasData.find(p => loc.includes(String(p.localizacao || "").toUpperCase()));
-  return printer || null;
-}
-
-function getPrevisoesPorImpressoraAppBraga() {
-  const grupos = new Map();
-
-  (historicoGlobal || []).forEach(item => {
-    const printer = localizarImpressoraDeRegisto(item);
-    if (!printer) return;
-
-    const key = printer.serie;
-    if (!grupos.has(key)) {
-      grupos.set(key, { printer, datas: [], historico: [] });
-    }
-
-    const data = parseDataAppBraga(item.dataFolha || item.data);
-    if (data) grupos.get(key).datas.push(data);
-    grupos.get(key).historico.push(item);
-  });
-
-  const resultados = [];
-
-  grupos.forEach(({ printer, datas, historico }) => {
-    const uniq = Array.from(new Set(datas.map(d => d.toISOString().slice(0, 10))))
-      .map(s => new Date(s + "T00:00:00"))
-      .sort((a, b) => a - b);
-
-    const intervalos = [];
-    for (let i = 1; i < uniq.length; i++) {
-      const dias = diffDiasAppBraga(uniq[i - 1], uniq[i]);
-      if (dias > 0 && dias < 365) intervalos.push(dias);
-    }
-
-    const mediaDias = intervalos.length
-      ? Math.round(intervalos.reduce((a, b) => a + b, 0) / intervalos.length)
-      : null;
-
-    const stockLocal = (stockGlobal || []).filter(s => {
-      const loc = String(s.localizacao || "").toUpperCase();
-      return loc.includes(String(printer.serie).toUpperCase()) || loc.includes(String(printer.localizacao).toUpperCase());
-    }).length;
-
-    let diasRestantes = null;
-    if (mediaDias && stockLocal >= 0) {
-      diasRestantes = mediaDias * stockLocal;
-    }
-
-    resultados.push({
-      printer,
-      totalUsos: historico.length,
-      mediaDias,
-      stockLocal,
-      diasRestantes,
-      ultimaTroca: uniq.length ? uniq[uniq.length - 1].toISOString().slice(0, 10) : ""
-    });
-  });
-
-  return resultados.sort((a, b) => {
-    const da = a.diasRestantes === null ? 999999 : a.diasRestantes;
-    const db = b.diasRestantes === null ? 999999 : b.diasRestantes;
-    return da - db;
-  });
-}
-
-function renderPrevisoesPorImpressoraAppBraga() {
-  const host = el("dashboardPrevisoesImpressoras");
-  if (!host) return;
-
-  const rows = getPrevisoesPorImpressoraAppBraga();
-
-  if (!rows.length) {
-    host.innerHTML = `<div class="previsao-card"><h4>Sem previsões</h4><p>Ainda não existe histórico suficiente por impressora.</p></div>`;
+function editarPorta(ref) {
+  const porta = encontrarPortaPorRef(ref);
+  if (!porta) {
+    mostrarMensagem("Porta não encontrada.", "erro");
     return;
   }
 
-  host.innerHTML = rows.slice(0, 12).map(r => {
-    let classe = "ok";
-    let estado = "Sem risco imediato";
+  portaEditRef = ref;
 
-    if (r.diasRestantes === null) {
-      classe = "aviso";
-      estado = "Histórico insuficiente";
-    } else if (r.diasRestantes <= 5) {
-      classe = "critico";
-      estado = "Risco crítico";
-    } else if (r.diasRestantes <= 15) {
-      classe = "aviso";
-      estado = "Atenção";
-    }
+  if (el("editPorta")) el("editPorta").value = porta.porta || "";
+  if (el("editLocal")) el("editLocal").value = porta.local || "";
+  if (el("editUser")) el("editUser").value = porta.user || "";
+  if (el("editEquipamento")) el("editEquipamento").value = porta.equipamento || "";
+  if (el("editIP")) el("editIP").value = porta.ip || "";
 
-    return `
-      <div class="previsao-card ${classe}">
-        <h4>${r.printer.modelo} — ${r.printer.localizacao}</h4>
-        <p>Série: ${r.printer.serie}</p>
-        <p>Total de usos: ${r.totalUsos}</p>
-        <p>Última troca: ${r.ultimaTroca || "Sem data"}</p>
-        <p>Consumo médio: ${r.mediaDias ? `${r.mediaDias} dias` : "Sem histórico suficiente"}</p>
-        <p>Stock local: ${r.stockLocal}</p>
-        <p><strong>Previsão:</strong> ${r.diasRestantes !== null ? `acaba em ~${r.diasRestantes} dias` : estado}</p>
-      </div>
-    `;
-  }).join("");
+  if (el("modalEditarPorta")) el("modalEditarPorta").style.display = "flex";
 }
 
-const __origRenderDashboardResumoInteligentePrevisao = typeof renderDashboardResumoInteligente === "function"
-  ? renderDashboardResumoInteligente
-  : null;
-
-if (__origRenderDashboardResumoInteligentePrevisao) {
-  renderDashboardResumoInteligente = function(...args) {
-    const r = __origRenderDashboardResumoInteligentePrevisao.apply(this, args);
-    try { renderPrevisoesPorImpressoraAppBraga(); } catch (e) { console.error(e); }
-    return r;
-  };
+function fecharEditarPorta() {
+  portaEditRef = null;
+  if (el("modalEditarPorta")) el("modalEditarPorta").style.display = "none";
 }
 
-window.addEventListener("DOMContentLoaded", () => {
-  setTimeout(() => {
-    try { renderPrevisoesPorImpressoraAppBraga(); } catch (e) { console.error(e); }
-  }, 900);
-});
+async function guardarEdicaoPorta() {
+  if (portaEditRef === null || typeof portaEditRef === "undefined") {
+    mostrarMensagem("Nenhuma porta selecionada.", "erro");
+    return;
+  }
 
-
-/* ===== PORTAS FIREBASE CRUD INSIDE ===== */
-const PORTAS_ACTION_STYLE = "inside";
-let portaEditId = null;
-
-function abrirModalPorta() {
-  portaEditId = null;
-  if (el("tituloModalPorta")) el("tituloModalPorta").innerText = "Nova Porta";
-  if (el("portaInput")) el("portaInput").value = "";
-  if (el("localInput")) el("localInput").value = "";
-  if (el("userInput")) el("userInput").value = "";
-  if (el("equipamentoInputPorta")) el("equipamentoInputPorta").value = "";
-  if (el("ipInput")) el("ipInput").value = "";
-  const m = el("modalPorta");
-  if (m) m.style.display = "flex";
-}
-
-function fecharModalPorta() {
-  const m = el("modalPorta");
-  if (m) m.style.display = "none";
-}
-
-function editarPortaFirebase(id) {
-  const p = portasData.find(x => String(x.idDoc || "") === String(id));
-  if (!p) return;
-  portaEditId = id;
-  if (el("tituloModalPorta")) el("tituloModalPorta").innerText = `Editar Porta ${p.porta || ""}`;
-  if (el("portaInput")) el("portaInput").value = p.porta || "";
-  if (el("localInput")) el("localInput").value = p.local || "";
-  if (el("userInput")) el("userInput").value = p.user || "";
-  if (el("equipamentoInputPorta")) el("equipamentoInputPorta").value = p.equipamento || "";
-  if (el("ipInput")) el("ipInput").value = p.ip || "";
-  const m = el("modalPorta");
-  if (m) m.style.display = "flex";
-}
-
-async function guardarPortaFirebase() {
   const payload = {
-    porta: el("portaInput")?.value?.trim() || "",
-    local: el("localInput")?.value?.trim() || "",
-    user: el("userInput")?.value?.trim() || "",
-    equipamento: el("equipamentoInputPorta")?.value?.trim() || "",
-    ip: el("ipInput")?.value?.trim() || "",
-    created: new Date()
+    porta: el("editPorta") ? el("editPorta").value : "",
+    local: el("editLocal") ? el("editLocal").value : "",
+    user: el("editUser") ? el("editUser").value : "",
+    equipamento: el("editEquipamento") ? el("editEquipamento").value : "",
+    ip: el("editIP") ? el("editIP").value : ""
   };
 
-  if (!payload.porta || !payload.local) {
-    mostrarMensagem("Preenche pelo menos Porta e Local.", "erro");
+  try {
+    if (typeof portaEditRef === "string" && window.db) {
+      await db.collection("portas").doc(portaEditRef).update(payload);
+    } else {
+      const idx = Number(portaEditRef);
+      if (!Number.isNaN(idx) && portasData[idx]) {
+        portasData[idx] = { ...portasData[idx], ...payload };
+      }
+      renderPortas(portasData);
+    }
+
+    fecharEditarPorta();
+    mostrarMensagem("Porta atualizada com sucesso.");
+  } catch (e) {
+    console.error(e);
+    mostrarMensagem("Erro ao atualizar a porta.", "erro");
+  }
+}
+
+window.editarPorta = editarPorta;
+window.fecharEditarPorta = fecharEditarPorta;
+window.guardarEdicaoPorta = guardarEdicaoPorta;
+
+async function migrarPortasParaFirebase() {
+  if (!window.db) {
+    mostrarMensagem("Firebase não está disponível.", "erro");
     return;
   }
 
   try {
-    if (portaEditId) {
-      await db.collection("portas").doc(portaEditId).set(payload, { merge: true });
-      mostrarMensagem("Porta atualizada com sucesso.");
-    } else {
-      await db.collection("portas").add(payload);
-      mostrarMensagem("Porta adicionada com sucesso.");
+    const snap = await db.collection("portas").get();
+    if (!snap.empty) {
+      mostrarMensagem("A coleção portas já tem dados. Migração não necessária.");
+      return;
     }
-    fecharModalPorta();
+
+    for (const p of portasData) {
+      const payload = {
+        porta: p.porta || "",
+        local: p.local || "",
+        user: p.user || "",
+        equipamento: p.equipamento || "",
+        ip: p.ip || "",
+        created: new Date()
+      };
+      await db.collection("portas").add(payload);
+    }
+
+    mostrarMensagem("Migração das portas concluída com sucesso.");
   } catch (e) {
     console.error(e);
-    mostrarMensagem("Erro ao guardar porta.", "erro");
+    mostrarMensagem("Erro ao migrar portas para Firebase.", "erro");
   }
 }
 
-async function apagarPortaFirebase(id) {
-  if (!id) return;
-  try {
-    await db.collection("portas").doc(id).delete();
-    mostrarMensagem("Porta apagada com sucesso.");
-  } catch (e) {
-    console.error(e);
-    mostrarMensagem("Erro ao apagar porta.", "erro");
+async function carregarPortasComFallback() {
+  if (!window.db) {
+    renderPortas(portasData);
+    return;
   }
-}
 
-function carregarPortasFirebaseCrud() {
-  const host = el("listaPortas");
-  if (!host || !window.db) return;
   try {
-    db.collection("portas").orderBy("porta", "desc").onSnapshot(snap => {
-      if (!snap.empty) {
-        portasData = snap.docs.map(doc => ({ idDoc: doc.id, ...doc.data() }));
-        renderPortas();
+    db.collection("portas").onSnapshot(snap => {
+      if (snap.empty) {
+        renderPortas(portasData);
+        const countEl = document.getElementById("countPortas");
+        if (countEl) countEl.innerText = String(portasData.length);
+        return;
       }
-    }, err => console.error(err));
+
+      portasData = snap.docs.map(doc => ({ idDoc: doc.id, ...doc.data() }));
+      renderPortas(portasData);
+    }, error => {
+      console.error(error);
+      renderPortas(portasData);
+    });
   } catch (e) {
     console.error(e);
+    renderPortas(portasData);
   }
 }
 
-window.abrirModalPorta = abrirModalPorta;
-window.fecharModalPorta = fecharModalPorta;
-window.editarPortaFirebase = editarPortaFirebase;
-window.guardarPortaFirebase = guardarPortaFirebase;
-window.apagarPortaFirebase = apagarPortaFirebase;
+window.migrarPortasParaFirebase = migrarPortasParaFirebase;
 
 window.addEventListener("DOMContentLoaded", () => {
-  setTimeout(() => {
-    try { carregarPortasFirebaseCrud(); } catch (e) { console.error(e); }
-  }, 500);
+  const host = document.getElementById("listaPortas");
+  if (host) {
+    setTimeout(() => {
+      try { carregarPortasComFallback(); } catch (e) { console.error(e); }
+    }, 400);
+  }
 });
