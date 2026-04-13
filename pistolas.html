@@ -59,6 +59,33 @@
     <div id="listaPistolas" class="cards-list"></div>
   </div>
 
+
+  <div id="modalEditarPistola" class="modal-overlay" style="display:none;">
+    <div class="modal-card">
+      <div class="section-header">
+        <div>
+          <h3>Editar Pistola CK65</h3>
+          <p class="section-subtitle">Editar a pistola selecionada</p>
+        </div>
+      </div>
+      <div class="form-grid">
+        <label><span>Nº</span><input id="editP_num" type="text"></label>
+        <label><span>Nome</span><input id="editP_nome" type="text"></label>
+        <label><span>Password</span><input id="editP_password" type="text"></label>
+        <label><span>CN</span><input id="editP_cn" type="text"></label>
+        <label><span>SN</span><input id="editP_sn" type="text"></label>
+        <label><span>MAC</span><input id="editP_mac" type="text"></label>
+        <label><span>Operador</span><input id="editP_operador" type="text"></label>
+        <label><span>Armazém</span><input id="editP_armazem" type="text"></label>
+        <label><span>Prontas</span><input id="editP_prontas" type="text"></label>
+      </div>
+      <div class="card-actions" style="margin-top:14px;">
+        <button class="primary-btn" onclick="guardarEdicaoPistola()">Guardar</button>
+        <button class="secondary-btn" onclick="fecharEditarPistola()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
 </main>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>

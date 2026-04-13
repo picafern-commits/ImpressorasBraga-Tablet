@@ -60,6 +60,37 @@
     <div id="listaUsers" class="cards-list"></div>
   </div>
 
+
+  <div id="modalEditarUser" class="modal-overlay" style="display:none;">
+    <div class="modal-card">
+      <div class="section-header">
+        <div>
+          <h3>Editar User</h3>
+          <p class="section-subtitle">Editar o utilizador selecionado</p>
+        </div>
+      </div>
+      <div class="form-grid">
+        <label><span>Nome</span><input id="editUser_nome" type="text"></label>
+        <label><span>Zona</span><input id="editUser_zona" type="text"></label>
+        <label><span>User PC/EYE</span><input id="editUser_user_pc_eye" type="text"></label>
+        <label><span>Pass Remote</span><input id="editUser_pass_remote" type="text"></label>
+        <label><span>Pass Eye Peak</span><input id="editUser_pass_eye_peak" type="text"></label>
+        <label><span>Op. Pistola</span><input id="editUser_op_pistola" type="text"></label>
+        <label><span>Pass Pistola</span><input id="editUser_pass_pistola" type="text"></label>
+        <label><span>Nome PC</span><input id="editUser_nome_pc" type="text"></label>
+        <label><span>TeamViewer</span><input id="editUser_teamviewer" type="text"></label>
+        <label><span>User MO365</span><input id="editUser_user_mo365" type="text"></label>
+        <label><span>Pw MO365</span><input id="editUser_pw_mo365" type="text"></label>
+        <label><span>Email Bragalis</span><input id="editUser_email_bragalis" type="text"></label>
+        <label><span>Pass Bragalis</span><input id="editUser_pass_bragalis" type="text"></label>
+      </div>
+      <div class="card-actions" style="margin-top:14px;">
+        <button class="primary-btn" onclick="guardarEdicaoUser()">Guardar</button>
+        <button class="secondary-btn" onclick="fecharEditarUser()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
 </main>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>

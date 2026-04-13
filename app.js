@@ -1,4 +1,4 @@
-const APP_VERSION = "1.5.1";
+const APP_VERSION = "1.5.3";
 const firebaseConfig = {
   apiKey: "AIzaSyCSgw4rhBLW5mq4QClulubf6e0hf5lDJbo",
   authDomain: "toner-manager-756c4.firebaseapp.com",
@@ -2363,7 +2363,9 @@ function renderPistolas(lista = pistolasData) {
 
   atualizarContadoresPistolas(lista);
 
-  container.innerHTML = lista.map(p => `
+  container.innerHTML = lista.map((p, index) => {
+    const ref = p.idDoc ? `'${p.idDoc}'` : index;
+    return `
     <div class="pc-card">
       <div class="pc-name">${p.nome}</div>
       <div class="meta-line">Nº: <span class="meta-value">${p.num}</span></div>
@@ -2375,8 +2377,13 @@ function renderPistolas(lista = pistolasData) {
       <div class="meta-line">Armazém: <span class="meta-value">${p.armazem}</span></div>
       <div class="meta-line">Prontas: <span class="meta-value">${p.prontas}</span></div>
       <div class="meta-line">Estado: <span class="meta-value">${badgePistolaReserva(p.operador)}</span></div>
+      <div class="item-actions">
+        <button class="secondary-btn" onclick="editarPistola(${ref})">Editar</button>
+        <button class="secondary-btn" onclick="apagarPistola(${ref})">Apagar</button>
+      </div>
     </div>
-  `).join("");
+  `;
+  }).join("");
 }
 
 function filtrarPistolas(txt = "") {
@@ -2458,8 +2465,9 @@ function renderPortas(lista = portasData) {
 
   atualizarContadoresPortas(lista);
 
-  container.innerHTML = lista.map(p => {
+  container.innerHTML = lista.map((p, index) => {
     const estado = estadoPorta(p);
+    const ref = p.idDoc ? `'${p.idDoc}'` : index;
     return `
       <div class="pc-card">
         <div class="pc-name">Porta ${p.porta || "-"}</div>
@@ -2468,6 +2476,10 @@ function renderPortas(lista = portasData) {
         <div class="meta-line">Equipamento: <span class="meta-value">${p.equipamento || "-"}</span></div>
         <div class="meta-line">IP: <span class="meta-value">${p.ip ? `<a href="http://${p.ip}" target="_blank">${p.ip}</a>` : "-"}</span></div>
         <div class="meta-line">Estado: <span class="meta-value">${badgePorta(estado)}</span></div>
+        <div class="item-actions">
+          <button class="secondary-btn" onclick="editarPorta(${ref})">Editar</button>
+          <button class="secondary-btn" onclick="apagarPorta(${ref})">Apagar</button>
+        </div>
       </div>
     `;
   }).join("");
@@ -2529,7 +2541,9 @@ function renderUsers(lista = usersData) {
 
   atualizarContadoresUsers(lista);
 
-  container.innerHTML = lista.map(u => `
+  container.innerHTML = lista.map((u, index) => {
+    const ref = u.idDoc ? `'${u.idDoc}'` : index;
+    return `
     <div class="pc-card">
       <div class="pc-name">${u.nome}</div>
       <div class="meta-line">Zona: <span class="meta-value">${u.zona || "-"}</span></div>
@@ -2544,11 +2558,13 @@ function renderUsers(lista = usersData) {
       <div class="meta-line">Pw MO365: <span class="meta-value">${u.pw_mo365 || "-"}</span></div>
       <div class="meta-line">Email Bragalis: <span class="meta-value">${u.email_bragalis || "-"}</span></div>
       <div class="meta-line">Pass Bragalis: <span class="meta-value">${u.pass_bragalis || "-"}</span></div>
-      <div class="meta-line">MO365: <span class="meta-value">${badgeUser(utilizadorTemMO365(u))}</span></div>
-      <div class="meta-line">Pistola: <span class="meta-value">${badgeUser(utilizadorTemPistola(u))}</span></div>
-      <div class="meta-line">TeamViewer ativo: <span class="meta-value">${badgeUser(utilizadorTemTeamviewer(u))}</span></div>
+      <div class="item-actions">
+        <button class="secondary-btn" onclick="editarUser(${ref})">Editar</button>
+        <button class="secondary-btn" onclick="apagarUser(${ref})">Apagar</button>
+      </div>
     </div>
-  `).join("");
+  `;
+  }).join("");
 }
 
 function filtrarUsers(txt = "") {
@@ -3447,3 +3463,219 @@ function atualizarApp() {
 
 window.addEventListener("load", verificarAtualizacao);
 window.addEventListener("load", () => atualizarVersaoUI(APP_VERSION));
+
+
+
+/* ===== CRUD EXTRA: Portas, Users, Pistolas ===== */
+function itemPorRef(lista, ref) {
+  if (typeof ref === "string") {
+    return lista.find(i => i.idDoc === ref) || null;
+  }
+  const idx = Number(ref);
+  return Number.isNaN(idx) ? null : (lista[idx] || null);
+}
+
+function idxPorRef(lista, ref) {
+  if (typeof ref === "string") {
+    return lista.findIndex(i => i.idDoc === ref);
+  }
+  const idx = Number(ref);
+  return Number.isNaN(idx) ? -1 : idx;
+}
+
+/* Portas */
+let portaEditRef = null;
+
+function editarPorta(ref) {
+  const item = itemPorRef(portasData, ref);
+  if (!item) return mostrarMensagem("Porta não encontrada.", "erro");
+  portaEditRef = ref;
+  if (el("editPorta")) el("editPorta").value = item.porta || "";
+  if (el("editLocal")) el("editLocal").value = item.local || "";
+  if (el("editUser")) el("editUser").value = item.user || "";
+  if (el("editEquipamento")) el("editEquipamento").value = item.equipamento || "";
+  if (el("editIP")) el("editIP").value = item.ip || "";
+  if (el("modalEditarPorta")) el("modalEditarPorta").style.display = "flex";
+}
+
+function fecharEditarPorta() {
+  portaEditRef = null;
+  if (el("modalEditarPorta")) el("modalEditarPorta").style.display = "none";
+}
+
+async function guardarEdicaoPorta() {
+  if (portaEditRef === null || typeof portaEditRef === "undefined") return mostrarMensagem("Nenhuma porta selecionada.", "erro");
+  const payload = {
+    porta: el("editPorta") ? el("editPorta").value : "",
+    local: el("editLocal") ? el("editLocal").value : "",
+    user: el("editUser") ? el("editUser").value : "",
+    equipamento: el("editEquipamento") ? el("editEquipamento").value : "",
+    ip: el("editIP") ? el("editIP").value : ""
+  };
+
+  try {
+    if (typeof portaEditRef === "string" && window.db) {
+      await db.collection("portas").doc(portaEditRef).update(payload);
+      const idx = idxPorRef(portasData, portaEditRef);
+      if (idx >= 0) portasData[idx] = { ...portasData[idx], ...payload };
+    } else {
+      const idx = idxPorRef(portasData, portaEditRef);
+      if (idx >= 0) portasData[idx] = { ...portasData[idx], ...payload };
+    }
+    fecharEditarPorta();
+    renderPortas(portasData);
+    mostrarMensagem("Porta atualizada com sucesso.");
+  } catch (e) {
+    console.error(e);
+    mostrarMensagem("Erro ao atualizar a porta.", "erro");
+  }
+}
+
+async function apagarPorta(ref) {
+  if (!confirm("Queres apagar esta porta?")) return;
+  try {
+    if (typeof ref === "string" && window.db) {
+      await db.collection("portas").doc(ref).delete();
+    }
+    const idx = idxPorRef(portasData, ref);
+    if (idx >= 0) portasData.splice(idx, 1);
+    renderPortas(portasData);
+    mostrarMensagem("Porta apagada com sucesso.");
+  } catch (e) {
+    console.error(e);
+    mostrarMensagem("Erro ao apagar a porta.", "erro");
+  }
+}
+
+/* Users */
+let userEditRef = null;
+
+function editarUser(ref) {
+  const item = itemPorRef(usersData, ref);
+  if (!item) return mostrarMensagem("User não encontrado.", "erro");
+  userEditRef = ref;
+  const fields = ["nome","zona","user_pc_eye","pass_remote","pass_eye_peak","op_pistola","pass_pistola","nome_pc","teamviewer","user_mo365","pw_mo365","email_bragalis","pass_bragalis"];
+  fields.forEach(f => { const node = el("editUser_" + f); if (node) node.value = item[f] || ""; });
+  if (el("modalEditarUser")) el("modalEditarUser").style.display = "flex";
+}
+
+function fecharEditarUser() {
+  userEditRef = null;
+  if (el("modalEditarUser")) el("modalEditarUser").style.display = "none";
+}
+
+async function guardarEdicaoUser() {
+  if (userEditRef === null || typeof userEditRef === "undefined") return mostrarMensagem("Nenhum user selecionado.", "erro");
+  const payload = {};
+  ["nome","zona","user_pc_eye","pass_remote","pass_eye_peak","op_pistola","pass_pistola","nome_pc","teamviewer","user_mo365","pw_mo365","email_bragalis","pass_bragalis"].forEach(f => {
+    payload[f] = el("editUser_" + f) ? el("editUser_" + f).value : "";
+  });
+
+  try {
+    if (typeof userEditRef === "string" && window.db) {
+      await db.collection("users").doc(userEditRef).update(payload);
+      const idx = idxPorRef(usersData, userEditRef);
+      if (idx >= 0) usersData[idx] = { ...usersData[idx], ...payload };
+    } else {
+      const idx = idxPorRef(usersData, userEditRef);
+      if (idx >= 0) usersData[idx] = { ...usersData[idx], ...payload };
+    }
+    fecharEditarUser();
+    renderUsers(usersData);
+    mostrarMensagem("User atualizado com sucesso.");
+  } catch (e) {
+    console.error(e);
+    mostrarMensagem("Erro ao atualizar o user.", "erro");
+  }
+}
+
+async function apagarUser(ref) {
+  if (!confirm("Queres apagar este user?")) return;
+  try {
+    if (typeof ref === "string" && window.db) {
+      await db.collection("users").doc(ref).delete();
+    }
+    const idx = idxPorRef(usersData, ref);
+    if (idx >= 0) usersData.splice(idx, 1);
+    renderUsers(usersData);
+    mostrarMensagem("User apagado com sucesso.");
+  } catch (e) {
+    console.error(e);
+    mostrarMensagem("Erro ao apagar o user.", "erro");
+  }
+}
+
+/* Pistolas */
+let pistolaEditRef = null;
+
+function editarPistola(ref) {
+  const item = itemPorRef(pistolasData, ref);
+  if (!item) return mostrarMensagem("Pistola não encontrada.", "erro");
+  pistolaEditRef = ref;
+  ["num","nome","password","cn","sn","mac","operador","armazem","prontas"].forEach(f => {
+    const node = el("editP_" + f);
+    if (node) node.value = item[f] || "";
+  });
+  if (el("modalEditarPistola")) el("modalEditarPistola").style.display = "flex";
+}
+
+function fecharEditarPistola() {
+  pistolaEditRef = null;
+  if (el("modalEditarPistola")) el("modalEditarPistola").style.display = "none";
+}
+
+async function guardarEdicaoPistola() {
+  if (pistolaEditRef === null || typeof pistolaEditRef === "undefined") return mostrarMensagem("Nenhuma pistola selecionada.", "erro");
+  const payload = {};
+  ["num","nome","password","cn","sn","mac","operador","armazem","prontas"].forEach(f => {
+    payload[f] = el("editP_" + f) ? el("editP_" + f).value : "";
+  });
+
+  try {
+    if (typeof pistolaEditRef === "string" && window.db) {
+      await db.collection("pistolas").doc(pistolaEditRef).update(payload);
+      const idx = idxPorRef(pistolasData, pistolaEditRef);
+      if (idx >= 0) pistolasData[idx] = { ...pistolasData[idx], ...payload };
+    } else {
+      const idx = idxPorRef(pistolasData, pistolaEditRef);
+      if (idx >= 0) pistolasData[idx] = { ...pistolasData[idx], ...payload };
+    }
+    fecharEditarPistola();
+    renderPistolas(pistolasData);
+    mostrarMensagem("Pistola atualizada com sucesso.");
+  } catch (e) {
+    console.error(e);
+    mostrarMensagem("Erro ao atualizar a pistola.", "erro");
+  }
+}
+
+async function apagarPistola(ref) {
+  if (!confirm("Queres apagar esta pistola?")) return;
+  try {
+    if (typeof ref === "string" && window.db) {
+      await db.collection("pistolas").doc(ref).delete();
+    }
+    const idx = idxPorRef(pistolasData, ref);
+    if (idx >= 0) pistolasData.splice(idx, 1);
+    renderPistolas(pistolasData);
+    mostrarMensagem("Pistola apagada com sucesso.");
+  } catch (e) {
+    console.error(e);
+    mostrarMensagem("Erro ao apagar a pistola.", "erro");
+  }
+}
+
+window.editarPorta = editarPorta;
+window.fecharEditarPorta = fecharEditarPorta;
+window.guardarEdicaoPorta = guardarEdicaoPorta;
+window.apagarPorta = apagarPorta;
+
+window.editarUser = editarUser;
+window.fecharEditarUser = fecharEditarUser;
+window.guardarEdicaoUser = guardarEdicaoUser;
+window.apagarUser = apagarUser;
+
+window.editarPistola = editarPistola;
+window.fecharEditarPistola = fecharEditarPistola;
+window.guardarEdicaoPistola = guardarEdicaoPistola;
+window.apagarPistola = apagarPistola;
