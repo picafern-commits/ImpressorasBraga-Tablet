@@ -45,20 +45,6 @@
 <main class="main">
 
   <div class="topbar premium-topbar"><div class="topbar-main"><h1>Centro Operacional</h1><p class="subtitle">Resumo executivo do sistema e atividade recente</p></div><div class="topbar-status"><span class="status-pill">Sistema Online</span><span class="version-pill">v1.8 Premium</span></div></div>
-
-  <div class="panel dashboard-inteligente-panel">
-    <div class="section-header">
-      <div>
-        <h3>Dashboard Inteligente</h3>
-        <p class="section-subtitle">Alertas, estatísticas e últimos registos.</p>
-      </div>
-    </div>
-
-    <div id="dashboardStatsToners" class="stats-grid"></div>
-    <div id="dashboardAlertasToners" class="cards-list" style="margin-top:14px;"></div>
-    <div id="dashboardUltimosRegistos" class="cards-list" style="margin-top:14px;"></div>
-  </div>
-
   <div class="stats-grid">
     <div class="stat-card"><span>Stock</span><strong id="countStock">0</strong></div>
     <div class="stat-card"><span>Usados</span><strong id="countUsados">0</strong></div>
@@ -73,6 +59,17 @@
       </div>
     </div>
     <div id="dashboardResumoInteligente" class="cards-list"></div>
+  </div>
+
+
+  <div class="panel previsoes-panel">
+    <div class="section-header">
+      <div>
+        <h3>Previsões por Impressora</h3>
+        <p class="section-subtitle">Estimativa por impressora com base no histórico real dessa máquina.</p>
+      </div>
+    </div>
+    <div id="dashboardPrevisoesImpressoras" class="cards-list"></div>
   </div>
 
   <div class="panel">

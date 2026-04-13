@@ -1196,48 +1196,11 @@ body.dark .app-version-mini {
 }
 
 
-.auto-stock-panel {
+.previsoes-panel {
   margin-bottom: 18px;
 }
 
-.switch-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 44px;
-  font-weight: 700;
-}
-
-.switch-row input {
-  width: 18px;
-  height: 18px;
-}
-
-
-.dashboard-inteligente-panel {
-  margin-bottom: 18px;
-}
-
-.dashboard-mini-stat {
-  padding: 16px;
-  border-radius: 16px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow);
-}
-
-.dashboard-mini-stat .label {
-  font-size: 13px;
-  color: var(--muted);
-  margin-bottom: 6px;
-}
-
-.dashboard-mini-stat .value {
-  font-size: 28px;
-  font-weight: 800;
-}
-
-.alerta-item {
+.previsao-card {
   padding: 16px;
   border-radius: 16px;
   border: 1px solid var(--border);
@@ -1245,39 +1208,26 @@ body.dark .app-version-mini {
   box-shadow: var(--shadow);
 }
 
-.alerta-item.critico {
-  border-color: rgba(239, 68, 68, 0.25);
-  background: rgba(239, 68, 68, 0.05);
+.previsao-card h4 {
+  margin: 0 0 8px;
 }
 
-.alerta-item.aviso {
-  border-color: rgba(245, 158, 11, 0.25);
-  background: rgba(245, 158, 11, 0.05);
-}
-
-.alerta-item.ok {
-  border-color: rgba(34, 197, 94, 0.25);
-  background: rgba(34, 197, 94, 0.05);
-}
-
-.alerta-item h4 {
-  margin: 0 0 6px;
-}
-
-.alerta-item p {
+.previsao-card p {
   margin: 0;
   color: var(--muted);
 }
 
-.ultimo-registo-item {
-  padding: 14px 16px;
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  background: var(--card);
-  box-shadow: var(--shadow);
+.previsao-card.critico {
+  border-color: rgba(239, 68, 68, 0.25);
+  background: rgba(239, 68, 68, 0.05);
 }
 
-.ultimo-registo-item strong {
-  display: block;
-  margin-bottom: 6px;
+.previsao-card.aviso {
+  border-color: rgba(245, 158, 11, 0.25);
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.previsao-card.ok {
+  border-color: rgba(34, 197, 94, 0.25);
+  background: rgba(34, 197, 94, 0.05);
 }

@@ -3298,261 +3298,163 @@ window.gerarWordEtiquetaFromForm = gerarWordEtiquetaFromForm;
 
 
 /* =========================
-   AUTO STOCK DIRETO
+   PREVISÕES POR IMPRESSORA
 ========================= */
-let autoStockDiretoAtivo = false;
+function parseDataAppBraga(valor) {
+  const v = String(valor || "").trim();
+  if (!v) return null;
 
-function carregarPreferenciaAutoStock() {
-  try {
-    autoStockDiretoAtivo = localStorage.getItem("appBraga_autoStockDireto") === "1";
-    if (el("autoStockToggle")) {
-      el("autoStockToggle").checked = autoStockDiretoAtivo;
-    }
-  } catch (e) {
-    console.error(e);
-  }
-}
-
-function guardarPreferenciaAutoStock() {
-  try {
-    autoStockDiretoAtivo = !!(el("autoStockToggle") && el("autoStockToggle").checked);
-    localStorage.setItem("appBraga_autoStockDireto", autoStockDiretoAtivo ? "1" : "0");
-    mostrarMensagem(autoStockDiretoAtivo ? "Auto stock ligado." : "Auto stock desligado.");
-  } catch (e) {
-    console.error(e);
-  }
-}
-
-function deveUsarAutoStockDireto() {
-  return !!autoStockDiretoAtivo;
-}
-
-async function tentarAutoStockDireto() {
-  if (!deveUsarAutoStockDireto()) return false;
-
-  const equipamento = el("equipamento");
-  const cor = el("cor");
-  const localizacao = el("localizacao");
-  const data = el("data");
-
-  const eq = equipamento ? equipamento.value : "";
-  const c = cor ? cor.value : "";
-  const loc = localizacao ? localizacao.value : "";
-  const dt = data ? data.value : "";
-
-  if (!eq || !c) return false;
-  if (!loc || loc === "Sem Localização" || !String(loc).trim()) return false;
-  if (!dt || !String(dt).trim()) return false;
-
-  try {
-    if (typeof disponivel === "function") {
-      await disponivel();
-      return true;
-    }
-  } catch (e) {
-    console.error("Erro no auto stock:", e);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+    const d = new Date(v + "T00:00:00");
+    return isNaN(d.getTime()) ? null : d;
   }
 
-  return false;
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(v)) {
+    const [dd, mm, yyyy] = v.split("/");
+    const d = new Date(`${yyyy}-${mm}-${dd}T00:00:00`);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  return null;
 }
 
-const __origAplicarDadosOCRNoFormularioStable = typeof aplicarDadosOCRNoFormularioStable === "function" ? aplicarDadosOCRNoFormularioStable : null;
-if (__origAplicarDadosOCRNoFormularioStable) {
-  aplicarDadosOCRNoFormularioStable = function(...args) {
-    const r = __origAplicarDadosOCRNoFormularioStable.apply(this, args);
-    setTimeout(() => { tentarAutoStockDireto(); }, 300);
-    return r;
-  };
+function diffDiasAppBraga(a, b) {
+  const ms = Math.abs(b.getTime() - a.getTime());
+  return Math.round(ms / 86400000);
 }
 
-const __origConfirmarSerie3DigitosProf = typeof confirmarSerie3DigitosProf === "function" ? confirmarSerie3DigitosProf : null;
-if (__origConfirmarSerie3DigitosProf) {
-  confirmarSerie3DigitosProf = function(...args) {
-    const r = __origConfirmarSerie3DigitosProf.apply(this, args);
-    setTimeout(() => { tentarAutoStockDireto(); }, 150);
-    return r;
-  };
+function localizarImpressoraDeRegisto(registo) {
+  const loc = String(registo?.localizacao || "").toUpperCase();
+  if (!loc) return null;
+
+  // prioridade à série completa
+  let printer = impressorasData.find(p => loc.includes(String(p.serie || "").toUpperCase()));
+  if (printer) return printer;
+
+  // fallback por localização simples
+  printer = impressorasData.find(p => String(p.localizacao || "").toUpperCase() === loc);
+  if (printer) return printer;
+
+  // fallback por texto contido
+  printer = impressorasData.find(p => loc.includes(String(p.localizacao || "").toUpperCase()));
+  return printer || null;
 }
 
-const __origProcessarTextoLidoStable = typeof processarTextoLidoStable === "function" ? processarTextoLidoStable : null;
-if (__origProcessarTextoLidoStable) {
-  processarTextoLidoStable = function(...args) {
-    const r = __origProcessarTextoLidoStable.apply(this, args);
-    setTimeout(() => { tentarAutoStockDireto(); }, 300);
-    return r;
-  };
-}
+function getPrevisoesPorImpressoraAppBraga() {
+  const grupos = new Map();
 
-window.guardarPreferenciaAutoStock = guardarPreferenciaAutoStock;
+  (historicoGlobal || []).forEach(item => {
+    const printer = localizarImpressoraDeRegisto(item);
+    if (!printer) return;
 
-window.addEventListener("DOMContentLoaded", () => {
-  setTimeout(() => {
-    try { carregarPreferenciaAutoStock(); } catch (e) { console.error(e); }
-  }, 100);
-});
-
-
-
-/* =========================
-   DASHBOARD INTELIGENTE COMPLETO
-========================= */
-function getResumoStockPorCodigoAppBraga() {
-  const mapa = {};
-  (stockGlobal || []).forEach(item => {
-    const codigo = String(item.codigo || item.codigoToner || item.toner || item.equipamento || "Sem Código");
-    if (!mapa[codigo]) {
-      mapa[codigo] = { codigo, total: 0, equipamento: item.equipamento || "", cor: item.cor || "" };
+    const key = printer.serie;
+    if (!grupos.has(key)) {
+      grupos.set(key, { printer, datas: [], historico: [] });
     }
-    mapa[codigo].total += 1;
+
+    const data = parseDataAppBraga(item.dataFolha || item.data);
+    if (data) grupos.get(key).datas.push(data);
+    grupos.get(key).historico.push(item);
   });
-  return Object.values(mapa).sort((a, b) => a.codigo.localeCompare(b.codigo));
+
+  const resultados = [];
+
+  grupos.forEach(({ printer, datas, historico }) => {
+    const uniq = Array.from(new Set(datas.map(d => d.toISOString().slice(0, 10))))
+      .map(s => new Date(s + "T00:00:00"))
+      .sort((a, b) => a - b);
+
+    const intervalos = [];
+    for (let i = 1; i < uniq.length; i++) {
+      const dias = diffDiasAppBraga(uniq[i - 1], uniq[i]);
+      if (dias > 0 && dias < 365) intervalos.push(dias);
+    }
+
+    const mediaDias = intervalos.length
+      ? Math.round(intervalos.reduce((a, b) => a + b, 0) / intervalos.length)
+      : null;
+
+    const stockLocal = (stockGlobal || []).filter(s => {
+      const loc = String(s.localizacao || "").toUpperCase();
+      return loc.includes(String(printer.serie).toUpperCase()) || loc.includes(String(printer.localizacao).toUpperCase());
+    }).length;
+
+    let diasRestantes = null;
+    if (mediaDias && stockLocal >= 0) {
+      diasRestantes = mediaDias * stockLocal;
+    }
+
+    resultados.push({
+      printer,
+      totalUsos: historico.length,
+      mediaDias,
+      stockLocal,
+      diasRestantes,
+      ultimaTroca: uniq.length ? uniq[uniq.length - 1].toISOString().slice(0, 10) : ""
+    });
+  });
+
+  return resultados.sort((a, b) => {
+    const da = a.diasRestantes === null ? 999999 : a.diasRestantes;
+    const db = b.diasRestantes === null ? 999999 : b.diasRestantes;
+    return da - db;
+  });
 }
 
-function renderDashboardStatsTonersProf() {
-  const box = el("dashboardStatsToners");
-  if (!box) return;
+function renderPrevisoesPorImpressoraAppBraga() {
+  const host = el("dashboardPrevisoesImpressoras");
+  if (!host) return;
 
-  const resumo = getResumoStockPorCodigoAppBraga();
-  const totalTipos = resumo.length;
-  const totalStock = (stockGlobal || []).length;
-  const totalHistorico = (historicoGlobal || []).length;
-  const ultimosHoje = (stockGlobal || []).filter(item => {
-    const data = String(item.data || "");
-    return data === new Date().toISOString().slice(0, 10);
-  }).length;
+  const rows = getPrevisoesPorImpressoraAppBraga();
 
-  box.innerHTML = `
-    <div class="dashboard-mini-stat">
-      <div class="label">Total em stock</div>
-      <div class="value">${totalStock}</div>
-    </div>
-    <div class="dashboard-mini-stat">
-      <div class="label">Tipos de toner</div>
-      <div class="value">${totalTipos}</div>
-    </div>
-    <div class="dashboard-mini-stat">
-      <div class="label">Usados / histórico</div>
-      <div class="value">${totalHistorico}</div>
-    </div>
-    <div class="dashboard-mini-stat">
-      <div class="label">Entradas hoje</div>
-      <div class="value">${ultimosHoje}</div>
-    </div>
-  `;
-}
-
-function renderDashboardAlertasTonersProf() {
-  const box = el("dashboardAlertasToners");
-  if (!box) return;
-
-  const resumo = getResumoStockPorCodigoAppBraga();
-  const criticos = resumo.filter(r => r.total <= 1);
-  const avisos = resumo.filter(r => r.total > 1 && r.total <= 3);
-  const oks = resumo.filter(r => r.total > 3);
-
-  let html = "";
-
-  if (!resumo.length) {
-    html = `<div class="alerta-item"><h4>Sem dados</h4><p>Ainda não existem toners em stock.</p></div>`;
-  } else {
-    html += criticos.map(r => `
-      <div class="alerta-item critico">
-        <h4>🔴 ${r.codigo}</h4>
-        <p>${r.equipamento || "Sem equipamento"} • ${r.cor || "Sem cor"} • Apenas ${r.total} em stock</p>
-      </div>
-    `).join("");
-
-    html += avisos.map(r => `
-      <div class="alerta-item aviso">
-        <h4>🟡 ${r.codigo}</h4>
-        <p>${r.equipamento || "Sem equipamento"} • ${r.cor || "Sem cor"} • Restam ${r.total} em stock</p>
-      </div>
-    `).join("");
-
-    html += oks.slice(0, 6).map(r => `
-      <div class="alerta-item ok">
-        <h4>🟢 ${r.codigo}</h4>
-        <p>${r.equipamento || "Sem equipamento"} • ${r.cor || "Sem cor"} • ${r.total} em stock</p>
-      </div>
-    `).join("");
+  if (!rows.length) {
+    host.innerHTML = `<div class="previsao-card"><h4>Sem previsões</h4><p>Ainda não existe histórico suficiente por impressora.</p></div>`;
+    return;
   }
 
-  box.innerHTML = html;
+  host.innerHTML = rows.slice(0, 12).map(r => {
+    let classe = "ok";
+    let estado = "Sem risco imediato";
+
+    if (r.diasRestantes === null) {
+      classe = "aviso";
+      estado = "Histórico insuficiente";
+    } else if (r.diasRestantes <= 5) {
+      classe = "critico";
+      estado = "Risco crítico";
+    } else if (r.diasRestantes <= 15) {
+      classe = "aviso";
+      estado = "Atenção";
+    }
+
+    return `
+      <div class="previsao-card ${classe}">
+        <h4>${r.printer.modelo} — ${r.printer.localizacao}</h4>
+        <p>Série: ${r.printer.serie}</p>
+        <p>Total de usos: ${r.totalUsos}</p>
+        <p>Última troca: ${r.ultimaTroca || "Sem data"}</p>
+        <p>Consumo médio: ${r.mediaDias ? `${r.mediaDias} dias` : "Sem histórico suficiente"}</p>
+        <p>Stock local: ${r.stockLocal}</p>
+        <p><strong>Previsão:</strong> ${r.diasRestantes !== null ? `acaba em ~${r.diasRestantes} dias` : estado}</p>
+      </div>
+    `;
+  }).join("");
 }
 
-function renderDashboardUltimosRegistosProf() {
-  const box = el("dashboardUltimosRegistos");
-  if (!box) return;
-
-  const ultimosStock = [...(stockGlobal || [])]
-    .sort((a, b) => {
-      const da = a.created?.seconds ? a.created.seconds : 0;
-      const db = b.created?.seconds ? b.created.seconds : 0;
-      return db - da;
-    })
-    .slice(0, 5);
-
-  const ultimosHistorico = [...(historicoGlobal || [])]
-    .sort((a, b) => {
-      const da = a.created?.seconds ? a.created.seconds : 0;
-      const db = b.created?.seconds ? b.created.seconds : 0;
-      return db - da;
-    })
-    .slice(0, 5);
-
-  let html = "";
-
-  html += ultimosStock.length ? `
-    <div class="ultimo-registo-item">
-      <strong>Últimos adicionados ao stock</strong>
-      ${ultimosStock.map(item => `
-        <div>${item.equipamento || "Sem equipamento"} • ${item.cor || "Sem cor"} • ${item.localizacao || "Sem localização"} • ${item.data || "Sem data"}</div>
-      `).join("")}
-    </div>
-  ` : `
-    <div class="ultimo-registo-item">
-      <strong>Últimos adicionados ao stock</strong>
-      <div>Sem registos.</div>
-    </div>
-  `;
-
-  html += ultimosHistorico.length ? `
-    <div class="ultimo-registo-item">
-      <strong>Últimos usados / histórico</strong>
-      ${ultimosHistorico.map(item => `
-        <div>${item.equipamento || "Sem equipamento"} • ${item.cor || "Sem cor"} • ${item.localizacao || "Sem localização"} • ${item.data || "Sem data"}</div>
-      `).join("")}
-    </div>
-  ` : `
-    <div class="ultimo-registo-item">
-      <strong>Últimos usados / histórico</strong>
-      <div>Sem registos.</div>
-    </div>
-  `;
-
-  box.innerHTML = html;
-}
-
-function renderDashboardInteligenteCompletoProf() {
-  renderDashboardStatsTonersProf();
-  renderDashboardAlertasTonersProf();
-  renderDashboardUltimosRegistosProf();
-}
-
-const __origRenderDashboardResumoInteligente = typeof renderDashboardResumoInteligente === "function"
+const __origRenderDashboardResumoInteligentePrevisao = typeof renderDashboardResumoInteligente === "function"
   ? renderDashboardResumoInteligente
   : null;
 
-if (__origRenderDashboardResumoInteligente) {
+if (__origRenderDashboardResumoInteligentePrevisao) {
   renderDashboardResumoInteligente = function(...args) {
-    const r = __origRenderDashboardResumoInteligente.apply(this, args);
-    try { renderDashboardInteligenteCompletoProf(); } catch (e) { console.error(e); }
+    const r = __origRenderDashboardResumoInteligentePrevisao.apply(this, args);
+    try { renderPrevisoesPorImpressoraAppBraga(); } catch (e) { console.error(e); }
     return r;
   };
 }
 
 window.addEventListener("DOMContentLoaded", () => {
   setTimeout(() => {
-    try { renderDashboardInteligenteCompletoProf(); } catch (e) { console.error(e); }
-  }, 700);
+    try { renderPrevisoesPorImpressoraAppBraga(); } catch (e) { console.error(e); }
+  }, 900);
 });
