@@ -1738,3 +1738,45 @@ body.dark .gestor-priority-card {
 .update-box-appbraga.mandatory .update-actions button {
   flex: 1;
 }
+
+
+/* ===== MELHORIAS 1 2 3 4 5 7 8 10 ===== */
+.smart-status-box, .alert-inteligente-card, .stock-min-card {
+  border-radius: 18px;
+  padding: 14px 16px;
+  border: 1px solid rgba(148,163,184,0.18);
+  background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,255,255,0.78));
+}
+html.dark .smart-status-box, body.dark .smart-status-box,
+html.dark .alert-inteligente-card, body.dark .alert-inteligente-card,
+html.dark .stock-min-card, body.dark .stock-min-card {
+  background: linear-gradient(180deg, rgba(15,23,42,0.88), rgba(15,23,42,0.74));
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.hist-advanced-toolbar {
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
+.hist-advanced-toolbar input { min-width: 140px; }
+.minimo-grid {
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px,1fr));
+  gap:12px;
+}
+.minimo-item {
+  border-radius: 16px;
+  padding: 14px;
+  border:1px solid rgba(148,163,184,0.18);
+  background: linear-gradient(180deg, rgba(255,255,255,0.94), rgba(255,255,255,0.80));
+}
+html.dark .minimo-item, body.dark .minimo-item {
+  background: linear-gradient(180deg, rgba(15,23,42,0.88), rgba(15,23,42,0.74));
+  border:1px solid rgba(255,255,255,0.06);
+}
+.minimo-item label { display:block; font-size:13px; opacity:.8; margin-bottom:8px; }
+.minimo-item input { width:100%; }
+.item-danger { color:#dc2626; font-weight:700; }
+.item-warning { color:#d97706; font-weight:700; }
+.item-ok { color:#16a34a; font-weight:700; }
+@media (max-width:780px){ .hist-advanced-toolbar { flex-direction:column; } }

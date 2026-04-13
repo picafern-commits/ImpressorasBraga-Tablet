@@ -124,21 +124,20 @@
 
   <div class="panel">
     <div class="toolbar"><input id="searchDashboard" type="text" placeholder="Pesquisar toners..." oninput="filtrarDashboard()"></div>
-    <div id="listaDashboardStock" class="cards-list"></div>
+    
+  <div class="panel">
+    <div class="section-header">
+      <div>
+        <h3>Alertas Inteligentes</h3>
+        <p class="section-subtitle">Notificações controladas do stock mínimo e criticidade real.</p>
+      </div>
+    </div>
+    <div id="alertasInteligentesDashboard" class="cards-list"></div>
   </div>
 
-
-
-<div class="panel gestor-panel">
-  <div class="section-header">
-    <h3>Painel de Gestão</h3>
-    <p class="section-subtitle">Decisão operacional em tempo real</p>
+<div id="listaDashboardStock" class="cards-list"></div>
   </div>
-  <div id="gestaoScore"></div>
-  <div id="gestaoPrioridades"></div>
-  <div id="gestaoTendencias"></div>
-  <div id="gestaoRecomendacoes"></div>
-</div>
+
 
 </main>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>

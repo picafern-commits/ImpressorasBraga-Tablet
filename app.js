@@ -1,4 +1,4 @@
-const APP_VERSION = "1.5.1";
+const APP_VERSION = "1.5.0";
 const firebaseConfig = {
   apiKey: "AIzaSyCSgw4rhBLW5mq4QClulubf6e0hf5lDJbo",
   authDomain: "toner-manager-756c4.firebaseapp.com",
@@ -1330,6 +1330,7 @@ async function disponivel() {
   const localizacao = el("localizacao");
   const cor = el("cor");
   const data = el("data");
+  const lote = el("lote");
 
   if (!equipamento || !cor) return;
 
@@ -1337,6 +1338,7 @@ async function disponivel() {
   const loc = localizacao ? localizacao.value : "";
   const corValue = cor.value;
   const dataValue = data ? data.value : "";
+  const loteValue = lote ? lote.value : "";
 
   if (!eq || !corValue) {
     mostrarMensagem("Preenche o equipamento e a cor.", "erro");
@@ -1353,6 +1355,7 @@ async function disponivel() {
       cor: corValue,
       data: dataValue || "Sem Data",
       dataFolha: (el("dataFolha") && el("dataFolha").value) || "Sem Data da Folha",
+      lote: loteValue || "",
       created: new Date()
     });
 
@@ -1361,6 +1364,7 @@ async function disponivel() {
     cor.value = "";
     if (data) data.value = "";
     if (el("dataFolha")) el("dataFolha").value = "";
+    if (lote) lote.value = "";
 
     mostrarMensagem("Toner adicionado com sucesso.");
   } catch (error) {
@@ -1383,7 +1387,10 @@ db.collection("stock").orderBy("created", "desc").onSnapshot(snap => {
   hideBackupBadge();
   renderDashboardCards(stockGlobal);
   renderStockCards(stockGlobal);
+  renderStockMinimoPainel();
+  renderAlertasInteligentes();
   renderDashboardResumoInteligente();
+  renderAlertasInteligentes();
   renderModoGestorExtremo();
 }, error => {
   console.error(error);
@@ -1392,7 +1399,10 @@ db.collection("stock").orderBy("created", "desc").onSnapshot(snap => {
   showBackupBadge();
   renderDashboardCards(stockGlobal);
   renderStockCards(stockGlobal);
+  renderStockMinimoPainel();
+  renderAlertasInteligentes();
   renderDashboardResumoInteligente();
+  renderAlertasInteligentes();
   renderModoGestorExtremo();
 });
 
@@ -1409,8 +1419,10 @@ db.collection("historico").orderBy("created", "desc").onSnapshot(snap => {
   saveBackupAppBraga(BACKUP_KEYS_APP_BRAGA.historico, historicoGlobal);
   hideBackupBadge();
   renderHistoricoCards(historicoGlobal);
+  renderAlertasInteligentes();
   renderModoGestorExtremo();
   renderDashboardResumoInteligente();
+  renderAlertasInteligentes();
   renderModoGestorExtremo();
 }, error => {
   console.error(error);
@@ -1418,8 +1430,10 @@ db.collection("historico").orderBy("created", "desc").onSnapshot(snap => {
   setText("countUsados", historicoGlobal.length);
   showBackupBadge();
   renderHistoricoCards(historicoGlobal);
+  renderAlertasInteligentes();
   renderModoGestorExtremo();
   renderDashboardResumoInteligente();
+  renderAlertasInteligentes();
   renderModoGestorExtremo();
 });
 
@@ -1628,10 +1642,13 @@ function renderStockCards(items) {
       <div class="meta-line">Equipamento: <span class="meta-value">${t.equipamento}</span></div>
       <div class="meta-line">Cor: <span class="meta-value">${t.cor}</span></div>
       <div class="meta-line">Localização: <span class="meta-value">${t.localizacao}</span></div>
-      <div class="meta-line">Data: <span class="meta-value">${t.data || "Sem Data"}</span></div>
+      <div class="meta-line">Lote: <span class="meta-value">${t.lote || "-"}</span></div>
+      <div class="meta-line">Data Scan: <span class="meta-value">${t.data || "Sem Data"}</span></div>
+      <div class="meta-line">Data Folha: <span class="meta-value">${t.dataFolha || "Sem Data da Folha"}</span></div>
       <div class="card-actions">
         <button class="small-btn btn-use" onclick="usar('${t.idDoc}')">Marcar usado</button>
-        <button class="small-btn btn-edit" onclick="editar('${t.idDoc}')">Editar</button>
+        <button class="small-btn btn-edit" onclick="abrirEditarStockModal('${t.idDoc}')">Editar</button>
+        <button class="small-btn btn-delete" onclick="apagarStockItem('${t.idDoc}')">Apagar</button>
       </div>
     </div>
   `).join("");
@@ -1652,8 +1669,11 @@ function renderHistoricoCards(items) {
       <div class="meta-line">Equipamento: <span class="meta-value">${t.equipamento}</span></div>
       <div class="meta-line">Cor: <span class="meta-value">${t.cor || "-"}</span></div>
       <div class="meta-line">Localização: <span class="meta-value">${t.localizacao || "Sem Localização"}</span></div>
-      <div class="meta-line">Data: <span class="meta-value">${t.data || "Sem Data"}</span></div>
+      <div class="meta-line">Lote: <span class="meta-value">${t.lote || "-"}</span></div>
+      <div class="meta-line">Data Scan: <span class="meta-value">${t.data || "Sem Data"}</span></div>
+      <div class="meta-line">Data Folha: <span class="meta-value">${t.dataFolha || "Sem Data da Folha"}</span></div>
       <div class="card-actions">
+        <button class="small-btn btn-edit" onclick="abrirEditarHistoricoModal('${t.idDoc}')">Editar</button>
         <button class="small-btn btn-delete" onclick="apagar('${t.idDoc}')">Apagar</button>
       </div>
     </div>
@@ -1701,42 +1721,11 @@ function editar(id) {
   window.location.href = "add-toner.html";
 }
 
-function exportar() {
-  if (!stockGlobal.length) {
-    mostrarMensagem("Não há dados para exportar.", "erro");
-    return;
-  }
+function exportar() { exportarExcelStock(); }
 
-  let csv = "ID;Equipamento;Localização;Cor;Data\n";
-  stockGlobal.forEach(t => {
-    csv += `${t.idInterno};${t.equipamento};${t.localizacao};${t.cor};${t.data || ""}\n`;
-  });
+function filtrar() { filtrarStockDebounced(); }
 
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "stock.csv";
-  a.click();
-}
-
-function filtrar() {
-  const input = el("search");
-  if (!input) return;
-
-  const txt = input.value.toLowerCase();
-  const filtrados = stockGlobal.filter(t =>
-    normalizarTexto(t.idInterno).includes(txt) ||
-    normalizarTexto(t.equipamento).includes(txt) ||
-    normalizarTexto(t.cor).includes(txt) ||
-    normalizarTexto(t.localizacao).includes(txt)
-  );
-
-  renderStockCards(filtrados);
-}
-
-function filtrarDashboard() {
-  renderDashboardCards();
-}
+function filtrarDashboard() { filtrarDashDebounced(); }
 
 /* =========================
    COMPUTADORES
@@ -1988,6 +1977,8 @@ function carregarEdicaoToner() {
     el("localizacao").value = toner.localizacao || "";
     el("cor").value = toner.cor || "";
     el("data").value = toner.data || "";
+    if (el("lote")) el("lote").value = toner.lote || "";
+    if (el("dataFolha")) el("dataFolha").value = toner.dataFolha || "";
   } catch (e) {
     console.error(e);
   }
@@ -2636,6 +2627,11 @@ window.addEventListener("DOMContentLoaded", () => {
 
   carregarChecklist();
   carregarEdicaoToner();
+  ensureLoteFieldOnEdit();
+  tryRenderAppBraga(renderStockMinimoConfig);
+  tryRenderAppBraga(renderStockMinimoPainel);
+  tryRenderAppBraga(renderAlertasInteligentes);
+  tryRenderAppBraga(() => enhanceScannerStatus("Leitura pronta."));
   preencherLocaisManutencao();
   preencherFormularioManutencao();
 
@@ -2987,7 +2983,10 @@ function extrairDadosEtiquetaOCRStable(texto) {
     else cor = "Preto";
   }
 
+  const lote = extractLoteFromText(t);
+
   return {
+    lote,
     tonerCode,
     equipamento,
     cor,
@@ -3004,6 +3003,9 @@ function aplicarDadosOCRNoFormularioStable(dados) {
 
   if (el("dataFolha")) {
     el("dataFolha").value = dados.dataFolha || "";
+  }
+  if (el("lote")) {
+    el("lote").value = dados.lote || "";
   }
 
   preencherDataAtualSeVaziaStable();
@@ -3066,12 +3068,14 @@ async function startScannerStable() {
       { facingMode: "environment" },
       { fps: 10, qrbox: { width: 280, height: 180 } },
       (decodedText) => {
+        enhanceScannerStatus("Código lido. A processar automaticamente...");
         processarTextoLidoStable(decodedText);
         stopScannerStable();
       },
       () => {}
     );
     scannerAtivoStable = true;
+    enhanceScannerStatus("Câmara iniciada. À espera de leitura inteligente.");
     mostrarMensagem("Câmara iniciada.");
   } catch (e) {
     console.error("Erro ao iniciar scanner:", e);
@@ -3129,6 +3133,7 @@ async function processarOCRInputStable(event) {
 
     const resumo = [
       dados.tonerCode ? `Toner: ${dados.tonerCode}` : "",
+      dados.lote ? `Lote: ${dados.lote}` : "",
       dados.equipamento ? `Equipamento: ${dados.equipamento}` : "",
       dados.cor ? `Cor: ${dados.cor}` : "",
       dados.dataFolha ? `Data folha: ${dados.dataFolha}` : "",
@@ -3895,22 +3900,333 @@ function renderModoGestorExtremo() {
 }
 
 
-function renderGestao() {
-  const score = Math.max(0, 100 - (stockGlobal.length < 5 ? 40 : 0));
-  const elScore = document.getElementById("gestaoScore");
-  if(elScore){
-    elScore.innerHTML = `<h4>Score Sistema: ${score}</h4>`;
-  }
 
-  const elPrior = document.getElementById("gestaoPrioridades");
-  if(elPrior){
-    elPrior.innerHTML = `<p>Prioridade: verificar stock crítico</p>`;
-  }
+/* ===== MELHORIAS 1 2 3 4 5 7 8 10 ===== */
+const STOCK_MIN_DEFAULTS = {
+  "Braga - Ilha 01": 1,
+  "Braga - Ilha 02": 1,
+  "Braga - Ilha 03": 1,
+  "Braga - Ilha 04": 1,
+  "Braga - Ilha 05": 1,
+  "Braga - Balcão 01": 2,
+  "Braga - Balcão 02": 2,
+  "Braga - Dep. Logistica": 2,
+  "Braga - G/Encomendas": 1,
+  "Braga - Devoluções": 1,
+  "Braga - Escritorio": 1,
+  "Vila Real - Ilha 01": 1,
+  "Vila Real - Ilha 02": 1,
+  "Vila Real - Ilha 03": 1,
+  "Sem Localização": 1
+};
 
-  const elRec = document.getElementById("gestaoRecomendacoes");
-  if(elRec){
-    elRec.innerHTML = `<p>Recomendação: repor toners críticos</p>`;
+let stockEditModalId = null;
+let historicoEditModalId = null;
+
+function debounceAppBraga(fn, wait = 180) {
+  let t = null;
+  return function(...args) {
+    clearTimeout(t);
+    t = setTimeout(() => fn.apply(this, args), wait);
+  };
+}
+
+function tryRenderAppBraga(fn) {
+  try { fn(); } catch (e) { console.error(e); }
+}
+
+function loadStockMinConfig() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("stockMinConfig") || "{}");
+    return { ...STOCK_MIN_DEFAULTS, ...saved };
+  } catch (e) {
+    console.error(e);
+    return { ...STOCK_MIN_DEFAULTS };
   }
 }
 
-renderGestao();
+function saveStockMinConfig(cfg) {
+  localStorage.setItem("stockMinConfig", JSON.stringify(cfg || {}));
+}
+
+function normalizeLocMin(loc) {
+  const raw = String(loc || "Sem Localização");
+  if (raw.includes(" - ")) {
+    const parts = raw.split(" - ");
+    if (parts.length >= 3) return `${parts[1]} - ${parts[2]}`;
+  }
+  return raw;
+}
+
+function getStockByLocationCounts() {
+  const map = {};
+  stockGlobal.forEach(item => {
+    const key = normalizeLocMin(item.localizacao);
+    map[key] = (map[key] || 0) + 1;
+  });
+  return map;
+}
+
+function renderStockMinimoPainel() {
+  const host = el("stockMinimoPainel");
+  if (!host) return;
+  const config = loadStockMinConfig();
+  const counts = getStockByLocationCounts();
+  host.innerHTML = Object.keys(config).map(loc => {
+    const atual = counts[loc] || 0;
+    const minimo = Number(config[loc] || 0);
+    const cls = atual < minimo ? "item-danger" : atual === minimo ? "item-warning" : "item-ok";
+    const estado = atual < minimo ? "Abaixo do mínimo" : atual === minimo ? "No mínimo" : "Acima do mínimo";
+    return `<div class="stock-min-card"><strong>${loc}</strong><div class="meta-line">Atual: <span class="meta-value ${cls}">${atual}</span></div><div class="meta-line">Mínimo: <span class="meta-value">${minimo}</span></div><div class="meta-line">${estado}</div></div>`;
+  }).join("");
+}
+
+function renderStockMinimoConfig() {
+  const host = el("stockMinimoConfigList");
+  if (!host) return;
+  const cfg = loadStockMinConfig();
+  host.innerHTML = `<div class="minimo-grid">${
+    Object.keys(cfg).map(loc => `
+      <div class="minimo-item">
+        <label>${loc}</label>
+        <input type="number" min="0" value="${cfg[loc]}" data-stock-min-loc="${loc}">
+      </div>
+    `).join("")
+  }</div>`;
+}
+
+function guardarStockMinimoConfig() {
+  const inputs = document.querySelectorAll("[data-stock-min-loc]");
+  const cfg = {};
+  inputs.forEach(inp => { cfg[inp.getAttribute("data-stock-min-loc")] = Math.max(0, parseInt(inp.value || "0", 10) || 0); });
+  saveStockMinConfig(cfg);
+  mostrarMensagem("Stock mínimo guardado com sucesso.");
+  tryRenderAppBraga(renderStockMinimoPainel);
+  tryRenderAppBraga(renderAlertasInteligentes);
+}
+
+function resetStockMinimoConfig() {
+  saveStockMinConfig(STOCK_MIN_DEFAULTS);
+  renderStockMinimoConfig();
+  renderStockMinimoPainel();
+  renderAlertasInteligentes();
+  mostrarMensagem("Stock mínimo reposto.");
+}
+
+function ensureLoteFieldOnEdit() {
+  const item = localStorage.getItem("editarToner");
+  if (!item || !el("lote")) return;
+  try {
+    const toner = JSON.parse(item);
+    el("lote").value = toner.lote || "";
+    if (el("dataFolha")) el("dataFolha").value = toner.dataFolha || "";
+  } catch (e) { console.error(e); }
+}
+
+function extractLoteFromText(text) {
+  const t = String(text || "").toUpperCase();
+  const m = t.match(/(?:LOTE|LOT|BATCH)\s*[:#-]?\s*([A-Z0-9-]{4,})/);
+  return m ? m[1] : "";
+}
+
+function enhanceScannerStatus(extra = "") {
+  const box = el("scannerSmartStatus");
+  if (!box) return;
+  box.innerText = extra || "Leitura pronta.";
+}
+
+function exportCsvFile(filename, headers, rows) {
+  const content = [headers.join(";"), ...rows.map(r => headers.map(h => String(r[h] ?? "").replace(/\n/g, " ")).join(";"))].join("\n");
+  const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+}
+
+function exportarExcelStock() {
+  if (!stockGlobal.length) return mostrarMensagem("Não há stock para exportar.", "erro");
+  exportCsvFile("stock_app_braga.csv", ["idInterno","equipamento","localizacao","cor","lote","data","dataFolha"], stockGlobal);
+}
+
+function exportarExcelHistorico() {
+  if (!historicoGlobal.length) return mostrarMensagem("Não há histórico para exportar.", "erro");
+  exportCsvFile("historico_app_braga.csv", ["idInterno","equipamento","localizacao","cor","lote","data","dataFolha"], historicoGlobal);
+}
+
+function exportarExcelTudo() {
+  const rows = [...stockGlobal.map(x => ({...x, origem:"stock"})), ...historicoGlobal.map(x => ({...x, origem:"historico"}))];
+  if (!rows.length) return mostrarMensagem("Não há dados para exportar.", "erro");
+  exportCsvFile("dados_completos_app_braga.csv", ["origem","idInterno","equipamento","localizacao","cor","lote","data","dataFolha"], rows);
+}
+
+function filtrarHistoricoAvancado() {
+  const texto = normalizarTexto(el("searchHistorico")?.value || "");
+  const dFrom = el("filterHistoricoFrom")?.value || "";
+  const dTo = el("filterHistoricoTo")?.value || "";
+  const fLoc = normalizarTexto(el("filterHistoricoLocal")?.value || "");
+  const fEq = normalizarTexto(el("filterHistoricoEquipamento")?.value || "");
+  const fCor = normalizarTexto(el("filterHistoricoCor")?.value || "");
+
+  const items = historicoGlobal.filter(t => {
+    const data = String(t.data || "");
+    const okText = !texto || [t.idInterno,t.equipamento,t.localizacao,t.cor,t.lote].some(v => normalizarTexto(v).includes(texto));
+    const okFrom = !dFrom || data >= dFrom;
+    const okTo = !dTo || data <= dTo;
+    const okLoc = !fLoc || normalizarTexto(t.localizacao).includes(fLoc);
+    const okEq = !fEq || normalizarTexto(t.equipamento).includes(fEq);
+    const okCor = !fCor || normalizarTexto(t.cor).includes(fCor);
+    return okText && okFrom && okTo && okLoc && okEq && okCor;
+  });
+  renderHistoricoCards(items);
+}
+
+function abrirEditarStockModal(id) {
+  const item = stockGlobal.find(x => x.idDoc === id);
+  if (!item) return mostrarMensagem("Item de stock não encontrado.", "erro");
+  stockEditModalId = id;
+  if (el("editStockEquipamento")) el("editStockEquipamento").value = item.equipamento || "";
+  if (el("editStockCor")) el("editStockCor").value = item.cor || "";
+  if (el("editStockLocalizacao")) el("editStockLocalizacao").value = item.localizacao || "";
+  if (el("editStockLote")) el("editStockLote").value = item.lote || "";
+  if (el("editStockData")) el("editStockData").value = item.data || "";
+  if (el("editStockDataFolha")) el("editStockDataFolha").value = item.dataFolha || "";
+  if (el("modalEditarStock")) el("modalEditarStock").style.display = "flex";
+}
+
+function fecharEdicaoStockModal() {
+  stockEditModalId = null;
+  if (el("modalEditarStock")) el("modalEditarStock").style.display = "none";
+}
+
+async function guardarEdicaoStockModal() {
+  if (!stockEditModalId) return;
+  const payload = {
+    equipamento: el("editStockEquipamento")?.value || "",
+    cor: el("editStockCor")?.value || "",
+    localizacao: el("editStockLocalizacao")?.value || "",
+    lote: el("editStockLote")?.value || "",
+    data: el("editStockData")?.value || "",
+    dataFolha: el("editStockDataFolha")?.value || ""
+  };
+  try {
+    await db.collection("stock").doc(stockEditModalId).update(payload);
+    fecharEdicaoStockModal();
+    mostrarMensagem("Stock atualizado.");
+  } catch (e) {
+    console.error(e);
+    mostrarMensagem("Erro ao atualizar stock.", "erro");
+  }
+}
+
+async function apagarStockItem(id) {
+  if (!confirm("Queres apagar este item do stock?")) return;
+  try {
+    await db.collection("stock").doc(id).delete();
+    mostrarMensagem("Item de stock apagado.");
+  } catch (e) {
+    console.error(e);
+    mostrarMensagem("Erro ao apagar stock.", "erro");
+  }
+}
+
+function abrirEditarHistoricoModal(id) {
+  const item = historicoGlobal.find(x => x.idDoc === id);
+  if (!item) return mostrarMensagem("Histórico não encontrado.", "erro");
+  historicoEditModalId = id;
+  if (el("editHistoricoEquipamento")) el("editHistoricoEquipamento").value = item.equipamento || "";
+  if (el("editHistoricoCor")) el("editHistoricoCor").value = item.cor || "";
+  if (el("editHistoricoLocalizacao")) el("editHistoricoLocalizacao").value = item.localizacao || "";
+  if (el("editHistoricoLote")) el("editHistoricoLote").value = item.lote || "";
+  if (el("editHistoricoData")) el("editHistoricoData").value = item.data || "";
+  if (el("editHistoricoDataFolha")) el("editHistoricoDataFolha").value = item.dataFolha || "";
+  if (el("modalEditarHistorico")) el("modalEditarHistorico").style.display = "flex";
+}
+
+function fecharEdicaoHistoricoModal() {
+  historicoEditModalId = null;
+  if (el("modalEditarHistorico")) el("modalEditarHistorico").style.display = "none";
+}
+
+async function guardarEdicaoHistoricoModal() {
+  if (!historicoEditModalId) return;
+  const payload = {
+    equipamento: el("editHistoricoEquipamento")?.value || "",
+    cor: el("editHistoricoCor")?.value || "",
+    localizacao: el("editHistoricoLocalizacao")?.value || "",
+    lote: el("editHistoricoLote")?.value || "",
+    data: el("editHistoricoData")?.value || "",
+    dataFolha: el("editHistoricoDataFolha")?.value || ""
+  };
+  try {
+    await db.collection("historico").doc(historicoEditModalId).update(payload);
+    fecharEdicaoHistoricoModal();
+    mostrarMensagem("Histórico atualizado.");
+  } catch (e) {
+    console.error(e);
+    mostrarMensagem("Erro ao atualizar histórico.", "erro");
+  }
+}
+
+function buildAlertasInteligentes() {
+  const cfg = loadStockMinConfig();
+  const counts = getStockByLocationCounts();
+  const rows = [];
+  Object.keys(cfg).forEach(loc => {
+    const atual = counts[loc] || 0;
+    const minimo = Number(cfg[loc] || 0);
+    if (atual < minimo) rows.push({ tipo: "stock", titulo: loc, detalhe: `Stock abaixo do mínimo: ${atual}/${minimo}` });
+  });
+
+  if (typeof impressorasData !== "undefined" && typeof tonerInfoState !== "undefined") {
+    impressorasData.forEach(item => {
+      const info = tonerInfoState[item.ip] || null;
+      const colors = Array.isArray(info?.colors) ? info.colors : [];
+      const crit = colors.filter(c => typeof c.percent === "number" && c.percent <= 20);
+      if (crit.length) rows.push({ tipo: "printer", titulo: `${item.modelo} · ${item.localizacao}`, detalhe: crit.map(c => `${c.label}: ${c.percent}%`).join(" | ") });
+    });
+  }
+  return rows.slice(0, 8);
+}
+
+function renderAlertasInteligentes() {
+  const rows = buildAlertasInteligentes();
+  ["alertasInteligentesDashboard","alertasInteligentesImpressoras"].forEach(id => {
+    const host = el(id);
+    if (!host) return;
+    host.innerHTML = rows.length ? rows.map(r => `<div class="alert-inteligente-card"><strong>${r.titulo}</strong><div class="meta-line">${r.detalhe}</div></div>`).join("") : `<div class="alert-inteligente-card"><strong>Sem alertas</strong><div class="meta-line">Não existem alertas inteligentes ativos.</div></div>`;
+  });
+}
+
+const filtrarStockDebounced = debounceAppBraga(function() {
+  const input = el("search");
+  if (!input) return;
+  const txt = input.value.toLowerCase();
+  const filtrados = stockGlobal.filter(t =>
+    normalizarTexto(t.idInterno).includes(txt) ||
+    normalizarTexto(t.equipamento).includes(txt) ||
+    normalizarTexto(t.cor).includes(txt) ||
+    normalizarTexto(t.localizacao).includes(txt) ||
+    normalizarTexto(t.lote).includes(txt)
+  );
+  renderStockCards(filtrados);
+}, 120);
+
+const filtrarDashDebounced = debounceAppBraga(function() {
+  renderDashboardCards();
+}, 120);
+
+window.exportarExcelStock = exportarExcelStock;
+window.exportarExcelHistorico = exportarExcelHistorico;
+window.exportarExcelTudo = exportarExcelTudo;
+window.guardarStockMinimoConfig = guardarStockMinimoConfig;
+window.resetStockMinimoConfig = resetStockMinimoConfig;
+window.filtrarHistoricoAvancado = filtrarHistoricoAvancado;
+window.abrirEditarStockModal = abrirEditarStockModal;
+window.fecharEdicaoStockModal = fecharEdicaoStockModal;
+window.guardarEdicaoStockModal = guardarEdicaoStockModal;
+window.apagarStockItem = apagarStockItem;
+window.abrirEditarHistoricoModal = abrirEditarHistoricoModal;
+window.fecharEdicaoHistoricoModal = fecharEdicaoHistoricoModal;
+window.guardarEdicaoHistoricoModal = guardarEdicaoHistoricoModal;
+
