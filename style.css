@@ -1270,15 +1270,6 @@ body.dark .app-version-mini {
   opacity: 0.92;
 }
 
-.porta-card-hover {
-  position: relative;
-}
-.porta-card-hover .porta-actions {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .18s ease;
-}
-.porta-card-hover:hover .porta-actions {
+.porta-card-inside .porta-actions {
   opacity: 1;
-  pointer-events: auto;
 }

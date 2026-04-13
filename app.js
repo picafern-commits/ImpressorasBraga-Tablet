@@ -3466,8 +3466,8 @@ window.addEventListener("DOMContentLoaded", () => {
 });
 
 
-/* ===== PORTAS FIREBASE CRUD HOVER ===== */
-const PORTAS_ACTION_STYLE = "hover";
+/* ===== PORTAS FIREBASE CRUD INSIDE ===== */
+const PORTAS_ACTION_STYLE = "inside";
 let portaEditId = null;
 
 function abrirModalPorta() {
