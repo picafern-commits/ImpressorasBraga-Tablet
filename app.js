@@ -1,4 +1,4 @@
-const APP_VERSION = "1.6.1";
+const APP_VERSION = "1.0.0";
 const firebaseConfig = {
   apiKey: "AIzaSyCSgw4rhBLW5mq4QClulubf6e0hf5lDJbo",
   authDomain: "toner-manager-756c4.firebaseapp.com",
@@ -3489,7 +3489,8 @@ function atualizarAppObrigatorio() {
     `;
   }
 
-  const target = APP_REMOTE_BASE + "?update=" + Date.now();
+  const target = APP_REMOTE_BASE + "index.html?update=" + Date.now();
+  const currentBefore = window.location.href;
 
   setTimeout(async () => {
     try {
@@ -3501,8 +3502,34 @@ function atualizarAppObrigatorio() {
     try {
       window.location.replace(target);
     } catch (e) {
-      window.location.href = target;
+      console.error("replace falhou", e);
     }
+
+    setTimeout(() => {
+      if (window.location.href === currentBefore) {
+        try {
+          window.location.href = target;
+        } catch (e) {
+          console.error("href falhou", e);
+        }
+      }
+    }, 1200);
+
+    setTimeout(() => {
+      if (window.location.href === currentBefore) {
+        try {
+          const a = document.createElement("a");
+          a.href = target;
+          a.target = "_self";
+          a.rel = "noopener";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        } catch (e) {
+          console.error("link fallback falhou", e);
+        }
+      }
+    }, 2200);
   }, 400);
 }
 
