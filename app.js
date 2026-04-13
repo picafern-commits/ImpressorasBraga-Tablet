@@ -1,4 +1,4 @@
-const APP_VERSION = "1.5.9";
+const APP_VERSION = "1.0.0";
 const firebaseConfig = {
   apiKey: "AIzaSyCSgw4rhBLW5mq4QClulubf6e0hf5lDJbo",
   authDomain: "toner-manager-756c4.firebaseapp.com",
@@ -3394,12 +3394,40 @@ window.addEventListener("DOMContentLoaded", () => {
 });
 
 
+/* ===== AUTO UPDATE PRO FINAL ===== */
+const APP_REMOTE_BASE = "https://picafern-commits.github.io/App-Tablet/";
+const APP_VERSION_URL = APP_REMOTE_BASE + "version.json?t=" + Date.now();
+
+async function limparServiceWorkersAntigosAppBraga() {
+  try {
+    if (!("serviceWorker" in navigator)) return;
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for (const reg of regs) {
+      await reg.unregister();
+    }
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+  } catch (e) {
+    console.error("Erro a limpar service workers/cache", e);
+  }
+}
+
 async function verificarAtualizacao() {
   try {
-    const res = await fetch("https://picafern-commits.github.io/App-Tablet/version.json?t=" + Date.now(), { cache: "no-store" });
-    const data = await res.json();
+    await limparServiceWorkersAntigosAppBraga();
 
-    atualizarVersaoUI(data && data.version ? data.version : APP_VERSION);
+    const res = await fetch(APP_VERSION_URL, {
+      cache: "no-store",
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache"
+      }
+    });
+
+    const data = await res.json();
+    atualizarVersaoUI((data && data.version) ? data.version : APP_VERSION);
 
     if (data && data.version && data.version !== APP_VERSION) {
       mostrarAvisoUpdateObrigatorio(data.version);
@@ -3454,8 +3482,6 @@ function mostrarAvisoUpdateObrigatorio(novaVersao) {
 
 function atualizarAppObrigatorio() {
   const box = document.getElementById("updateBoxAppBraga");
-  const isOnlineApp = window.location.href.includes("github.io");
-
   if (box) {
     box.innerHTML = `
       <div class="update-title">⏳ A atualizar...</div>
@@ -3463,13 +3489,21 @@ function atualizarAppObrigatorio() {
     `;
   }
 
-  setTimeout(() => {
-    if (isOnlineApp) {
-      window.location.reload();
-    } else {
-      window.location.href = "https://picafern-commits.github.io/App-Tablet/?update=" + Date.now();
+  const target = APP_REMOTE_BASE + "?update=" + Date.now();
+
+  setTimeout(async () => {
+    try {
+      await limparServiceWorkersAntigosAppBraga();
+    } catch (e) {
+      console.error(e);
     }
-  }, 500);
+
+    try {
+      window.location.replace(target);
+    } catch (e) {
+      window.location.href = target;
+    }
+  }, 400);
 }
 
 window.addEventListener("load", verificarAtualizacao);

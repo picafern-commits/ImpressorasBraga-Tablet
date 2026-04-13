@@ -1706,3 +1706,35 @@ body.dark .gestor-priority-card {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* ===== AUTO UPDATE PRO FINAL ===== */
+.update-overlay-appbraga {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.76);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 9998;
+}
+
+.update-box-appbraga.mandatory {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  right: auto;
+  bottom: auto;
+  transform: translate(-50%, -50%);
+  width: min(430px, calc(100vw - 24px));
+  z-index: 9999;
+}
+
+.update-box-appbraga.mandatory .update-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.update-box-appbraga.mandatory .update-actions button {
+  flex: 1;
+}
