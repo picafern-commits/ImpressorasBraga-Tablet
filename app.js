@@ -3458,3 +3458,67 @@ window.addEventListener("DOMContentLoaded", () => {
     try { renderPrevisoesPorImpressoraAppBraga(); } catch (e) { console.error(e); }
   }, 900);
 });
+
+
+/* ===== PORTAS FIREBASE CRUD ===== */
+let portasGlobal=[];
+
+function renderPortasFirebase(){
+  const tbody=document.getElementById("portasBody");
+  if(!tbody) return;
+
+  tbody.innerHTML=portasGlobal.map(p=>`
+    <tr>
+      <td>${p.mesa||""}</td>
+      <td>${p.localizacao||""}</td>
+      <td>${p.ip||""}</td>
+      <td>
+        <button onclick="editarPorta('${p.id}')">Editar</button>
+        <button onclick="apagarPorta('${p.id}')">X</button>
+      </td>
+    </tr>
+  `).join("");
+}
+
+function carregarPortasFirebase(){
+  if(!window.db) return;
+  db.collection("portas").onSnapshot(snap=>{
+    portasGlobal=snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderPortasFirebase();
+  });
+}
+
+async function adicionarPorta(){
+  const mesa=el("mesa").value;
+  const loc=el("localizacao").value;
+  const ip=el("ip").value;
+  if(!mesa||!loc||!ip) return alert("Preenche tudo");
+  await db.collection("portas").add({mesa,localizacao:loc,ip});
+}
+
+async function apagarPorta(id){
+  await db.collection("portas").doc(id).delete();
+}
+
+function editarPorta(id){
+  const p=portasGlobal.find(x=>x.id===id);
+  if(!p) return;
+  el("mesa").value=p.mesa;
+  el("localizacao").value=p.localizacao;
+  el("ip").value=p.ip;
+  window._editId=id;
+}
+
+async function guardarEdicao(){
+  if(!window._editId) return adicionarPorta();
+  await db.collection("portas").doc(window._editId).update({
+    mesa:el("mesa").value,
+    localizacao:el("localizacao").value,
+    ip:el("ip").value
+  });
+  window._editId=null;
+}
+
+window.addEventListener("DOMContentLoaded",()=>{
+  setTimeout(carregarPortasFirebase,500);
+});
