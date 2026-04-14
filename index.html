@@ -47,21 +47,14 @@
 </aside>
 <main class="main">
 
-  <div class="topbar premium-topbar"><div class="topbar-main"><h1>Centro Operacional</h1><p class="subtitle">Resumo executivo do sistema e atividade recente</p></div><div class="topbar-status"><span class="status-pill">Sistema Online</span><span class="version-pill" id="appVersion">v1.0.0 Premium</span></div></div>
-
-  
-  <div class="operational-strip">
-    <div class="operational-item">
-      <div class="operational-label">Função</div>
-      <div class="operational-value">Resumo diário</div>
+  <div class="topbar premium-topbar">
+    <div class="topbar-main">
+      <h1>Dashboard Principal</h1>
+      <p class="subtitle">Visão clean do que interessa: stock, usados, alertas e atividade recente</p>
     </div>
-    <div class="operational-item">
-      <div class="operational-label">Serve para</div>
-      <div class="operational-value">Ver stock, criticidade, movimentos e prioridade real</div>
-    </div>
-    <div class="operational-item">
-      <div class="operational-label">Modo</div>
-      <div class="operational-value">Execução operacional</div>
+    <div class="topbar-status">
+      <span class="status-pill">Sistema Online</span>
+      <span class="version-pill" id="appVersion">v1.0.0 Premium</span>
     </div>
   </div>
 
@@ -74,70 +67,49 @@
   <div class="panel">
     <div class="section-header">
       <div>
-        <h3>Centro Operacional Inteligente</h3>
-        <p class="section-subtitle">Este bloco serve para mostrar prioridade real, zonas com mais movimento e os últimos registos do sistema.</p>
+        <h3>Resumo Executivo</h3>
+        <p class="section-subtitle">Criticidade, localizações com mais movimento e últimos registos do sistema.</p>
       </div>
     </div>
     <div id="dashboardResumoInteligente" class="cards-list"></div>
   </div>
 
-  
-  <div class="panel gestor-panel">
-    <div class="section-header">
-      <div>
-        <h3>Modo Gestor Extremo</h3>
-        <p class="section-subtitle">Leitura executiva das prioridades, riscos e pressão operacional do dia.</p>
-      </div>
-    </div>
-    <div id="gestorExtremeBoard" class="cards-list"></div>
-  </div>
-
-  <div class="panel gestor-panel">
-    <div class="section-header">
-      <div>
-        <h3>Prioridade Máxima</h3>
-        <p class="section-subtitle">Impressoras e localizações que precisam de ação imediata.</p>
-      </div>
-    </div>
-    <div id="gestorPrioridadeMaxima" class="cards-list"></div>
-  </div>
-
-  <div class="panel gestor-panel">
-    <div class="section-header">
-      <div>
-        <h3>Top Consumo</h3>
-        <p class="section-subtitle">Localizações e equipamentos com maior movimento recente.</p>
-      </div>
-    </div>
-    <div id="gestorTopConsumo" class="cards-list"></div>
-  </div>
-
-  <div class="panel gestor-panel">
-    <div class="section-header">
-      <div>
-        <h3>Alertas do Dia</h3>
-        <p class="section-subtitle">Os 3 pontos mais importantes para acompanhar hoje.</p>
-      </div>
-    </div>
-    <div id="gestorTopProblemas" class="cards-list"></div>
-  </div>
-
-  <div class="panel">
-    <div class="toolbar"><input id="searchDashboard" type="text" placeholder="Pesquisar toners..." oninput="filtrarDashboard()"></div>
-    
   <div class="panel">
     <div class="section-header">
       <div>
         <h3>Alertas Inteligentes</h3>
-        <p class="section-subtitle">Notificações controladas do stock mínimo e criticidade real.</p>
+        <p class="section-subtitle">Só o essencial para agir rápido no dia a dia.</p>
       </div>
     </div>
     <div id="alertasInteligentesDashboard" class="cards-list"></div>
   </div>
 
-<div id="listaDashboardStock" class="cards-list"></div>
+  <div class="panel">
+    <div class="section-header">
+      <div>
+        <h3>Acessos Rápidos</h3>
+        <p class="section-subtitle">Atalhos diretos para as áreas mais usadas da operação.</p>
+      </div>
+    </div>
+    <div class="summary-grid">
+      <a class="summary-card" href="add-toner.html">
+        <h4>Adicionar Toner</h4>
+        <div class="meta-line">Registar novo toner rapidamente</div>
+      </a>
+      <a class="summary-card" href="stock.html">
+        <h4>Stock</h4>
+        <div class="meta-line">Ver disponibilidade atual</div>
+      </a>
+      <a class="summary-card" href="historico.html">
+        <h4>Histórico</h4>
+        <div class="meta-line">Consultar movimentos e consumos</div>
+      </a>
+      <a class="summary-card" href="etiquetas-word.html">
+        <h4>Etiquetas Word</h4>
+        <div class="meta-line">Gerar e regerar etiquetas</div>
+      </a>
+    </div>
   </div>
-
 
 </main>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
