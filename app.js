@@ -4310,6 +4310,64 @@ async function apagarEtiquetaWord(id) {
   }
 }
 
+async function regerarEtiquetaWord(id) {
+  try {
+    const item = (globalThis.etiquetasWordGlobal || []).find(entry => entry.idDoc === id);
+    if (!item) {
+      mostrarMensagem("Não foi possível encontrar a etiqueta para regerar.", "erro");
+      return;
+    }
+    if (typeof docx === "undefined") {
+      mostrarMensagem("Biblioteca Word não carregada.", "erro");
+      return;
+    }
+
+    const { Document, Packer, Paragraph, AlignmentType, TextRun } = docx;
+    const doc = new Document({
+      creator: "App Braga",
+      title: "Etiqueta Toner",
+      description: "Etiqueta regerada a partir do histórico",
+      sections: [{
+        properties: {},
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 3200, after: 500 },
+            children: [new TextRun({ text: item.localCurto || "Sem Localização", bold: true, size: 42 })]
+          }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 200, after: 2800 },
+            children: [new TextRun({ text: item.serie || "SEM SÉRIE", bold: true, size: 64 })]
+          }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 0, after: 200 },
+            children: [new TextRun({ text: item.dataEtiqueta || "Sem Data", bold: true, size: 56 })]
+          })
+        ]
+      }]
+    });
+
+    const blob = await Packer.toBlob(doc);
+    const fileName = `Etiqueta_${String(item.localCurto || "Sem_Localizacao").replace(/\s+/g, "_")}_${item.serie || "SEM_SERIE"}.docx`;
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      URL.revokeObjectURL(a.href);
+      a.remove();
+    }, 1200);
+    mostrarMensagem("Etiqueta Word regerada com sucesso.");
+  } catch (error) {
+    console.error(error);
+    mostrarMensagem("Erro ao regerar a etiqueta Word.", "erro");
+  }
+
+}
+
 function renderEtiquetasWord(lista = globalThis.etiquetasWordGlobal) {
   const host = el("listaEtiquetasWord");
   if (!host) return;
@@ -4325,6 +4383,7 @@ function renderEtiquetasWord(lista = globalThis.etiquetasWordGlobal) {
       <div class="meta-line">Data etiqueta: <span class="meta-value">${item.dataEtiqueta || "Sem Data"}</span></div>
       <div class="meta-line">Data scan: <span class="meta-value">${item.dataScanISO || "-"}</span></div>
       <div class="card-actions">
+        <button class="small-btn" onclick="regerarEtiquetaWord('${item.idDoc}')">Regerar Etiqueta</button>
         <button class="small-btn btn-delete" onclick="apagarEtiquetaWord('${item.idDoc}')">Apagar</button>
       </div>
     </div>
@@ -4372,3 +4431,4 @@ if (typeof window.gerarWordEtiquetaFromForm === "function") {
 window.renderEtiquetasWord = renderEtiquetasWord;
 window.filtrarEtiquetasWord = filtrarEtiquetasWord;
 window.apagarEtiquetaWord = apagarEtiquetaWord;
+window.regerarEtiquetaWord = regerarEtiquetaWord;
