@@ -1780,3 +1780,21 @@ html.dark .minimo-item, body.dark .minimo-item {
 .item-warning { color:#d97706; font-weight:700; }
 .item-ok { color:#16a34a; font-weight:700; }
 @media (max-width:780px){ .hist-advanced-toolbar { flex-direction:column; } }
+
+
+/* ===== DIAGNÓSTICO TONER ===== */
+.toner-diagnostics-panel { margin-bottom: 18px; }
+.diagnostics-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-top:12px; }
+.diagnostics-card .summary-value.small { font-size: 15px; line-height: 1.35; }
+.diagnostics-status-row { display:flex; align-items:center; gap:10px; margin-top:6px; }
+.diag-dot { width:12px; height:12px; border-radius:999px; display:inline-block; background:#64748b; box-shadow:0 0 0 3px rgba(100,116,139,.18); }
+.diag-dot.is-ok { background:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,.18); }
+.diag-dot.is-warn { background:#f59e0b; box-shadow:0 0 0 3px rgba(245,158,11,.18); }
+.diag-dot.is-error { background:#ef4444; box-shadow:0 0 0 3px rgba(239,68,68,.18); }
+.diag-dot.is-running { background:#38bdf8; box-shadow:0 0 0 3px rgba(56,189,248,.18); }
+.diagnostics-log-wrap { margin-top: 12px; }
+.diagnostics-log { display:flex; flex-direction:column; gap:8px; margin-top:8px; }
+.diagnostics-log-item { background: rgba(15,23,42,.78); border:1px solid rgba(148,163,184,.14); border-radius:14px; padding:10px 12px; font-size:13px; }
+.diagnostics-log-item strong { color:#e2e8f0; }
+.diagnostics-log-item .diag-time { color:#94a3b8; margin-right:8px; }
+.diagnostics-log-item.is-muted { color:#94a3b8; }
