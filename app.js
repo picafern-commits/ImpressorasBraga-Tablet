@@ -1192,6 +1192,44 @@ const usersData = [
   }
 ];
 
+const USERS_STORAGE_KEY = 'appbraga_users_custom_v1';
+
+function prepararRefsUsers() {
+  usersData.forEach((u, i) => {
+    if (!u.idDoc && !u._ref) u._ref = `local-user-${i}`;
+  });
+}
+
+function guardarUsersLocal() {
+  try {
+    const serializavel = usersData.map(u => ({ ...u }));
+    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(serializavel));
+  } catch (e) {
+    console.warn('Nao foi possivel guardar users no localStorage.', e);
+  }
+}
+
+function carregarUsersLocal() {
+  try {
+    const raw = localStorage.getItem(USERS_STORAGE_KEY);
+    if (!raw) {
+      prepararRefsUsers();
+      return;
+    }
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || !parsed.length) {
+      prepararRefsUsers();
+      return;
+    }
+    usersData.splice(0, usersData.length, ...parsed);
+    prepararRefsUsers();
+  } catch (e) {
+    console.warn('Nao foi possivel carregar users do localStorage.', e);
+    prepararRefsUsers();
+  }
+}
+
+
 /* =========================
    IMPRESSORAS / MANUTENÇÃO
 ========================= */
@@ -2541,7 +2579,7 @@ function renderUsers(lista = usersData) {
   atualizarContadoresUsers(lista);
 
   container.innerHTML = lista.map((u, index) => {
-    const ref = u.idDoc ? `'${u.idDoc}'` : index;
+    const ref = u.idDoc ? `'${u.idDoc}'` : `'${u._ref || `local-user-${index}`}'`;
     return `
     <div class="pc-card">
       <div class="pc-name">${u.nome}</div>
@@ -2641,6 +2679,7 @@ window.addEventListener("DOMContentLoaded", () => {
   renderManutencoes(manutencoesGlobal);
   renderPistolas();
   renderPortas();
+  carregarUsersLocal();
   renderUsers();
 
   if (el("manutencaoSerie")) {
@@ -2951,6 +2990,23 @@ function resolveDiagSource() {
   return (window.electronAPI && window.electronAPI.getTonerSNMP) ? "Leitura real SNMP" : "Firebase";
 }
 
+
+const tonerDiagUiState = { logsVisible: false };
+
+function renderTonerDiagLogVisibility() {
+  const wrapEl = el("tonerDiagLogWrap");
+  const btnEl = el("toggleTonerDiagLogBtn");
+  if (!wrapEl || !btnEl) return;
+  wrapEl.classList.toggle("is-collapsed", !tonerDiagUiState.logsVisible);
+  btnEl.textContent = tonerDiagUiState.logsVisible ? "Esconder logs" : "Ver logs";
+}
+
+function toggleTonerDiagLog(force) {
+  tonerDiagUiState.logsVisible = typeof force === "boolean" ? force : !tonerDiagUiState.logsVisible;
+  renderTonerDiagLogVisibility();
+}
+window.toggleTonerDiagLog = toggleTonerDiagLog;
+
 function renderTonerDiagnostics() {
   const statusEl = el("tonerDiagStatus");
   const dotEl = el("tonerDiagDot");
@@ -2959,6 +3015,7 @@ function renderTonerDiagnostics() {
   const summaryEl = el("tonerDiagSummary");
   const logEl = el("tonerDiagLog");
   if (!statusEl || !dotEl || !lastRunEl || !sourceEl || !summaryEl || !logEl) return;
+  renderTonerDiagLogVisibility();
 
   const map = {
     idle: ["Sem teste", "is-idle"],
@@ -3770,7 +3827,7 @@ window.addEventListener("load", () => atualizarVersaoUI(APP_VERSION));
 /* ===== CRUD EXTRA: Portas, Users, Pistolas ===== */
 function itemPorRef(lista, ref) {
   if (typeof ref === "string") {
-    return lista.find(i => i.idDoc === ref) || null;
+    return lista.find(i => i.idDoc === ref || i._ref === ref) || null;
   }
   const idx = Number(ref);
   return Number.isNaN(idx) ? null : (lista[idx] || null);
@@ -3778,7 +3835,7 @@ function itemPorRef(lista, ref) {
 
 function idxPorRef(lista, ref) {
   if (typeof ref === "string") {
-    return lista.findIndex(i => i.idDoc === ref);
+    return lista.findIndex(i => i.idDoc === ref || i._ref === ref);
   }
   const idx = Number(ref);
   return Number.isNaN(idx) ? -1 : idx;
@@ -3881,8 +3938,9 @@ async function guardarEdicaoUser() {
       const idx = idxPorRef(usersData, userEditRef);
       if (idx >= 0) usersData[idx] = { ...usersData[idx], ...payload };
     }
+    guardarUsersLocal();
     fecharEditarUser();
-    renderUsers(usersData);
+    filtrarUsersComFiltros();
     mostrarMensagem("User atualizado com sucesso.");
   } catch (e) {
     console.error(e);
@@ -3898,7 +3956,8 @@ async function apagarUser(ref) {
     }
     const idx = idxPorRef(usersData, ref);
     if (idx >= 0) usersData.splice(idx, 1);
-    renderUsers(usersData);
+    guardarUsersLocal();
+    filtrarUsersComFiltros();
     mostrarMensagem("User apagado com sucesso.");
   } catch (e) {
     console.error(e);

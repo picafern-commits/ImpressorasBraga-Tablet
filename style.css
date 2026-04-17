@@ -1798,3 +1798,7 @@ html.dark .minimo-item, body.dark .minimo-item {
 .diagnostics-log-item strong { color:#e2e8f0; }
 .diagnostics-log-item .diag-time { color:#94a3b8; margin-right:8px; }
 .diagnostics-log-item.is-muted { color:#94a3b8; }
+
+.diagnostics-log-header { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.log-toggle-btn { min-width: 112px; }
+.diagnostics-log-wrap.is-collapsed .diagnostics-log { display:none; }

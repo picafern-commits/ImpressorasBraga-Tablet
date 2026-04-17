@@ -94,8 +94,11 @@
         <div class="summary-value small" id="tonerDiagSummary">À espera de teste</div>
       </div>
     </div>
-    <div class="diagnostics-log-wrap">
-      <div class="meta-line"><span class="meta-label">Log recente</span></div>
+    <div class="diagnostics-log-wrap is-collapsed" id="tonerDiagLogWrap">
+      <div class="meta-line diagnostics-log-header">
+        <span class="meta-label">Log recente</span>
+        <button type="button" class="action-btn secondary log-toggle-btn" id="toggleTonerDiagLogBtn" onclick="window.toggleTonerDiagLog && window.toggleTonerDiagLog()">Ver logs</button>
+      </div>
       <div id="tonerDiagLog" class="diagnostics-log">
         <div class="diagnostics-log-item is-muted">Ainda sem leituras.</div>
       </div>
