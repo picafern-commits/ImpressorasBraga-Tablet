@@ -4096,15 +4096,8 @@ function imprimirUser(ref) {
       </div>
     `).join("");
 
-  const popup = window.open("", "_blank", "width=900,height=700");
-  if (!popup) {
-    mostrarMensagem("Não foi possível abrir a janela de impressão. Verifica se o browser bloqueou popups.", "erro");
-    return;
-  }
-
   const titulo = escapeHtmlAppBraga(item.nome || "User");
-  popup.document.open();
-  popup.document.write(`
+  const htmlImpressao = `
     <!DOCTYPE html>
     <html lang="pt">
     <head>
@@ -4172,19 +4165,6 @@ function imprimirUser(ref) {
           word-break: break-word;
           white-space: pre-wrap;
         }
-        @media screen {
-          body {
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            background: #f3f4f6;
-            padding: 12px;
-          }
-          .label-sheet {
-            background: #fff;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.12);
-          }
-        }
       </style>
     </head>
     <body>
@@ -4195,18 +4175,46 @@ function imprimirUser(ref) {
           ${linhas || '<div class="print-row"><div class="print-label">Sem dados</div><div class="print-value">Este user não tem campos preenchidos.</div></div>'}
         </div>
       </div>
-      <script>
-        window.onload = () => {
-          setTimeout(() => {
-            window.focus();
-            window.print();
-          }, 150);
-        };
-      </scr' + 'ipt>
     </body>
     </html>
-  `);
-  popup.document.close();
+  `;
+
+  const iframe = document.createElement("iframe");
+  iframe.style.position = "fixed";
+  iframe.style.right = "0";
+  iframe.style.bottom = "0";
+  iframe.style.width = "0";
+  iframe.style.height = "0";
+  iframe.style.border = "0";
+  iframe.setAttribute("aria-hidden", "true");
+  document.body.appendChild(iframe);
+
+  const frameWindow = iframe.contentWindow;
+  if (!frameWindow) {
+    iframe.remove();
+    mostrarMensagem("Não foi possível preparar a impressão neste dispositivo.", "erro");
+    return;
+  }
+
+  const limparIframe = () => setTimeout(() => iframe.remove(), 1500);
+
+  iframe.onload = () => {
+    setTimeout(() => {
+      try {
+        frameWindow.focus();
+        frameWindow.print();
+      } catch (err) {
+        console.error("Falha ao imprimir user:", err);
+        mostrarMensagem("Não foi possível iniciar a impressão.", "erro");
+      } finally {
+        limparIframe();
+      }
+    }, 200);
+  };
+
+  frameWindow.document.open();
+  frameWindow.document.write(htmlImpressao);
+  frameWindow.document.close();
 }
 
 
