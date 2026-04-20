@@ -237,10 +237,10 @@ let portasData = [
   { porta: "141", local: "Mesa 12", user: "Mesa 12", equipamento: "", ip: "" },
   { porta: "140", local: "Mesa 12", user: "Jorge Rodrigues", equipamento: "Computador", ip: "192.168.10.112" },
 
-  { porta: "224", local: "BRA-BAL01", user: "BRA-BAL01", equipamento: "", ip: "" },
+  { porta: "224", local: "BRA-BAL01", user: "BRA-BAL01", equipamento: "", ip: "192.168.10.183" },
   { porta: "223", local: "BRA-BAL01", user: "Jose Miguel / Gonçalo Santos", equipamento: "Computador", ip: "192.168.10.125" },
 
-  { porta: "222", local: "BRA-BAL02", user: "BRA-BAL02", equipamento: "Impressora", ip: "192.168.10.183" },
+  { porta: "222", local: "BRA-BAL02", user: "BRA-BAL02", equipamento: "Impressora", ip: "192.168.10.184" },
   { porta: "221", local: "BRA-BAL02", user: "Rafael Araujo / Fabio Silva", equipamento: "Computador", ip: "192.168.10.126" },
 
   { porta: "220", local: "BRA-BAL03", user: "BRA-BAL03", equipamento: "Impressora", ip: "192.168.10.184" },
