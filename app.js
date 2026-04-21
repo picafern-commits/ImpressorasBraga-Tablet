@@ -4962,50 +4962,82 @@ function montarHtmlEtiquetaImpressao(item) {
 </html>`;
 }
 
-
-function limparModoImpressaoEtiqueta() {
-  try {
-    document.body.classList.remove('modo-impressao-etiqueta');
-    const area = document.getElementById('printAreaEtiqueta');
-    if (area) area.remove();
-  } catch (e) { console.error(e); }
-}
-
 async function regerarEtiquetaWordPartilhada(id) {
   const item = etiquetasWordGlobal.find(x => x.idDoc === id);
   if (!item) return mostrarMensagem("Etiqueta não encontrada.", "erro");
   try {
-    limparModoImpressaoEtiqueta();
-    const area = document.createElement('div');
-    area.id = 'printAreaEtiqueta';
-    area.innerHTML = montarHtmlEtiquetaImpressao(item)
-      .replace(/<!DOCTYPE html>[\s\S]*?<body>/i, '')
-      .replace(/<\/body>[\s\S]*$/i, '');
-    document.body.appendChild(area);
-    document.body.classList.add('modo-impressao-etiqueta');
+    const existente = document.getElementById('printAreaEtiquetaAppBraga');
+    if (existente) existente.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'printAreaEtiquetaAppBraga';
+    overlay.style.position = 'fixed';
+    overlay.style.inset = '0';
+    overlay.style.background = '#fff';
+    overlay.style.zIndex = '999999';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+    overlay.innerHTML = montarHtmlEtiquetaOverlay(item);
+    document.body.appendChild(overlay);
 
-    const finalizar = () => {
-      window.removeEventListener('afterprint', finalizar);
-      setTimeout(() => {
-        limparModoImpressaoEtiqueta();
-      }, 100);
-    };
-    window.addEventListener('afterprint', finalizar, { once: true });
+    const oldTitle = document.title;
+    document.title = `Etiqueta-${(item.localCurto || item.localizacao || 'Etiqueta')}`;
 
-    try {
-      window.print();
-      mostrarMensagem('Etiqueta pronta a imprimir.');
-    } catch (e) {
-      console.error(e);
-      limparModoImpressaoEtiqueta();
-      mostrarMensagem('Erro ao abrir a impressão.', 'erro');
-    }
+    setTimeout(() => {
+      try {
+        window.print();
+        mostrarMensagem('Etiqueta pronta a imprimir.');
+      } catch (e) {
+        console.error(e);
+        mostrarMensagem('Erro ao abrir a impressão.', 'erro');
+      } finally {
+        setTimeout(() => {
+          try { overlay.remove(); } catch (e) {}
+          document.title = oldTitle;
+        }, 600);
+      }
+    }, 150);
   } catch (e) {
     console.error(e);
-    limparModoImpressaoEtiqueta();
     mostrarMensagem('Erro ao preparar impressão.', 'erro');
   }
 }
+
+function montarHtmlEtiquetaOverlay(item) {
+  const linhas = [
+    ["Local", item.localCurto || item.localizacao],
+    ["Série", item.serie],
+    ["Armazém", item.armazem],
+    ["Localização", item.localizacao],
+    ["Equipamento", item.equipamento],
+    ["Cor", item.cor],
+    ["Lote", item.lote],
+    ["Data", item.dataEtiqueta || item.data || item.dataFolha],
+    ["Origem", item.origem]
+  ].filter(([,v]) => String(v || '').trim());
+
+  const escapeHtml = (v) => String(v ?? '').replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c] || c));
+  const rows = linhas.map(([k,v]) => `<div class="etq-row"><div class="etq-key">${escapeHtml(k)}</div><div class="etq-val">${escapeHtml(v)}</div></div>`).join('');
+  return `
+    <style>
+      @media print {
+        @page { size: 100mm 150mm; margin: 0; }
+        body * { visibility: hidden !important; }
+        #printAreaEtiquetaAppBraga, #printAreaEtiquetaAppBraga * { visibility: visible !important; }
+        #printAreaEtiquetaAppBraga { position: fixed !important; inset: 0 !important; margin: 0 !important; background: #fff !important; }
+      }
+      #printAreaEtiquetaAppBraga .etq-sheet { width:100mm; height:150mm; box-sizing:border-box; padding:8mm; color:#111; font-family:Arial, sans-serif; background:#fff; display:flex; flex-direction:column; justify-content:flex-start; }
+      #printAreaEtiquetaAppBraga .etq-title { font-size:20px; font-weight:700; margin:0 0 6mm; }
+      #printAreaEtiquetaAppBraga .etq-row { display:flex; flex-direction:column; margin:0 0 3.5mm; }
+      #printAreaEtiquetaAppBraga .etq-key { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; }
+      #printAreaEtiquetaAppBraga .etq-val { font-size:16px; line-height:1.25; word-break:break-word; }
+    </style>
+    <div class="etq-sheet">
+      <div class="etq-title">${escapeHtml(item.localCurto || item.localizacao || 'Etiqueta')}</div>
+      ${rows}
+    </div>`;
+}
+
 
 async function apagarEtiquetaWordPartilhada(id) {
   if (!confirm("Queres apagar esta etiqueta?")) return;
