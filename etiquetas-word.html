@@ -34,7 +34,7 @@
     <div class="topbar premium-topbar">
       <div class="topbar-main">
         <h1>Etiquetas Word</h1>
-        <p class="subtitle">Gerar, regerar e apagar etiquetas dos toners.</p>
+        <p class="subtitle">Etiquetas geradas por scan e prontas para download no PC.</p>
       </div>
       <div class="topbar-status">
         <span class="status-pill">Sistema Online</span>
@@ -44,13 +44,13 @@
 
     <section class="page-hero">
       <h2>Etiquetas Word</h2>
-      <p class="page-hero-subtitle">Lista de toners em stock e histórico prontos para gerar etiqueta.</p>
+      <p class="page-hero-subtitle">Lista partilhada de etiquetas geradas a partir do scan.</p>
     </section>
 
     <div class="summary-grid">
-      <div class="summary-card"><h4>Total</h4><div class="summary-value" id="countEtiquetasTotal">0</div><div class="meta-line">Stock + histórico</div></div>
-      <div class="summary-card"><h4>Em Stock</h4><div class="summary-value" id="countEtiquetasStock">0</div><div class="meta-line">Prontos para imprimir</div></div>
-      <div class="summary-card"><h4>Histórico</h4><div class="summary-value" id="countEtiquetasHistorico">0</div><div class="meta-line">Etiquetas já usadas</div></div>
+      <div class="summary-card"><h4>Total</h4><div class="summary-value" id="countEtiquetasTotal">0</div><div class="meta-line">Etiquetas guardadas</div></div>
+      <div class="summary-card"><h4>Hoje</h4><div class="summary-value" id="countEtiquetasStock">0</div><div class="meta-line">Geradas hoje</div></div>
+      <div class="summary-card"><h4>Séries</h4><div class="summary-value" id="countEtiquetasHistorico">0</div><div class="meta-line">Séries únicas</div></div>
     </div>
 
     <div class="panel">
@@ -63,9 +63,9 @@
       <div class="toolbar-inline">
         <input id="searchEtiquetasWord" type="text" placeholder="Pesquisar etiqueta...">
         <select id="filterEtiquetasOrigem">
-          <option value="">Todas as origens</option>
-          <option value="stock">Só stock</option>
-          <option value="historico">Só histórico</option>
+          <option value="">Todas</option>
+          <option value="scan">Só scans</option>
+          <option value="manual">Só manuais</option>
         </select>
       </div>
     </div>

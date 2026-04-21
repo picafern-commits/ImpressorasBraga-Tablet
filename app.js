@@ -3670,6 +3670,8 @@ async function gerarWordEtiquetaFromForm(auto = false) {
       a.remove();
     }, 1200);
 
+    await guardarEtiquetaPartilhada({ origem: auto ? "scan" : "manual" });
+
     if (!auto) {
       mostrarMensagem("Etiqueta Word gerada com sucesso.");
     }
@@ -4767,4 +4769,200 @@ window.apagarStockItem = apagarStockItem;
 window.abrirEditarHistoricoModal = abrirEditarHistoricoModal;
 window.fecharEdicaoHistoricoModal = fecharEdicaoHistoricoModal;
 window.guardarEdicaoHistoricoModal = guardarEdicaoHistoricoModal;
+
+
+
+
+/* =========================
+   ETIQUETAS WORD PARTILHADAS
+========================= */
+try { BACKUP_KEYS_APP_BRAGA.etiquetas = "appBraga_backup_etiquetas"; } catch (e) {}
+let etiquetasWordGlobal = [];
+
+function formatDatePTShared(valor) {
+  const raw = String(valor || "").trim();
+  if (!raw) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    const [yyyy, mm, dd] = raw.split("-");
+    return `${dd}/${mm}/${yyyy}`;
+  }
+  return raw;
+}
+
+function parseLocalizacaoEtiquetaShared(loc) {
+  const raw = String(loc || "").trim();
+  let serie = "";
+  let localCurto = raw || "Sem Localização";
+  let armazem = "";
+  const parts = raw.split(" - ").map(v => v.trim()).filter(Boolean);
+  if (parts.length >= 3) {
+    serie = parts[0] || "";
+    armazem = parts[1] || "";
+    localCurto = parts.slice(2).join(" - ") || localCurto;
+  } else {
+    const printer = (typeof impressorasData !== "undefined" && Array.isArray(impressorasData)) ? impressorasData.find(p => normalizarTexto(raw).includes(normalizarTexto(p.localizacao)) || normalizarTexto(raw).includes(normalizarTexto(p.serie))) : null;
+    if (printer) {
+      serie = printer.serie || "";
+      armazem = printer.armazem || "";
+      localCurto = printer.localizacao || localCurto;
+    }
+  }
+  return { serie, localCurto, armazem, localizacaoRaw: raw };
+}
+
+function montarPayloadEtiquetaPartilhada(extra = {}) {
+  const loc = extra.localizacao || ((el("localizacao") && el("localizacao").value) || "");
+  const info = parseLocalizacaoEtiquetaShared(loc);
+  const dataFolha = extra.dataFolha || ((el("dataFolha") && el("dataFolha").value) || "");
+  const dataScan = extra.data || ((el("data") && el("data").value) || "");
+  const equipamento = extra.equipamento || ((el("equipamento") && el("equipamento").value) || "");
+  const cor = extra.cor || ((el("cor") && el("cor").value) || "");
+  const lote = extra.lote || ((el("lote") && el("lote").value) || "");
+  const origem = extra.origem || "scan";
+  return {
+    serie: info.serie || extra.serie || "SEM SÉRIE",
+    localCurto: info.localCurto || "Sem Localização",
+    armazem: info.armazem || extra.armazem || "",
+    localizacao: info.localizacaoRaw || loc || "Sem Localização",
+    dataEtiqueta: formatDatePTShared(dataFolha || dataScan) || "Sem Data",
+    data: dataScan || "",
+    dataFolha: dataFolha || "",
+    equipamento: equipamento || "",
+    cor: cor || "",
+    lote: lote || "",
+    origem,
+    created: Date.now()
+  };
+}
+
+async function guardarEtiquetaPartilhada(extra = {}) {
+  if (!db || !db.collection) return null;
+  try {
+    const payload = montarPayloadEtiquetaPartilhada(extra);
+    const ref = await db.collection("etiquetasWord").add(payload);
+    return { idDoc: ref.id, ...payload };
+  } catch (e) {
+    console.error("Erro ao guardar etiqueta partilhada:", e);
+    return null;
+  }
+}
+
+async function gerarWordEtiquetaPartilhada(dados, opts = {}) {
+  try {
+    if (typeof docx === "undefined") {
+      mostrarMensagem("Biblioteca Word não carregada.", "erro");
+      return false;
+    }
+    const payload = montarPayloadEtiquetaPartilhada(dados || {});
+    const { Document, Packer, Paragraph, AlignmentType, TextRun } = docx;
+    const doc = new Document({
+      creator: "App Braga",
+      title: "Etiqueta Toner",
+      sections: [{ children: [
+        new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 3200, after: 500 }, children: [ new TextRun({ text: payload.localCurto, bold: true, size: 42 }) ] }),
+        new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 200, after: 2800 }, children: [ new TextRun({ text: payload.serie, bold: true, size: 64 }) ] }),
+        new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 0, after: 200 }, children: [ new TextRun({ text: payload.dataEtiqueta, bold: true, size: 56 }) ] })
+      ] }]
+    });
+    const blob = await Packer.toBlob(doc);
+    const fileName = `Etiqueta_${String(payload.localCurto || "Etiqueta").replace(/\s+/g, "_")}_${payload.serie || "SEM_SERIE"}.docx`;
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { try { URL.revokeObjectURL(a.href); a.remove(); } catch (e) {} }, 1200);
+    if (opts.saveRecord !== false) await guardarEtiquetaPartilhada(payload);
+    if (!opts.silent) mostrarMensagem("Etiqueta guardada e pronta para download.");
+    return true;
+  } catch (e) {
+    console.error("Erro ao gerar etiqueta partilhada:", e);
+    mostrarMensagem("Erro ao gerar a etiqueta Word.", "erro");
+    return false;
+  }
+}
+
+window.gerarWordEtiquetaPartilhada = gerarWordEtiquetaPartilhada;
+
+function renderEtiquetasWordCards() {
+  const host = el("listaEtiquetasWord");
+  if (!host) return;
+  const texto = normalizarTexto(el("searchEtiquetasWord")?.value || "");
+  const origem = normalizarTexto(el("filterEtiquetasOrigem")?.value || "");
+  let items = Array.isArray(etiquetasWordGlobal) ? [...etiquetasWordGlobal] : [];
+  if (origem) items = items.filter(x => normalizarTexto(x.origem).includes(origem));
+  if (texto) {
+    items = items.filter(x => [x.serie,x.localCurto,x.localizacao,x.equipamento,x.cor,x.lote,x.dataEtiqueta].some(v => normalizarTexto(v).includes(texto)));
+  }
+  setText("countEtiquetasTotal", items.length);
+  const hoje = new Date();
+  const ymd = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`;
+  setText("countEtiquetasStock", items.filter(x => String(x.data || x.dataFolha || "").startsWith(ymd) || String(x.dataEtiqueta || "").includes(`${String(hoje.getDate()).padStart(2,'0')}/${String(hoje.getMonth()+1).padStart(2,'0')}/${hoje.getFullYear()}`)).length);
+  setText("countEtiquetasHistorico", new Set(items.map(x => x.serie || x.localCurto || x.localizacao)).size);
+  if (!items.length) {
+    host.innerHTML = `<div class="panel empty-state"><h3>Sem etiquetas</h3><p>Faz scan no iPhone e a etiqueta aparece aqui para download no PC.</p></div>`;
+    return;
+  }
+  host.innerHTML = items.map(t => `
+    <div class="stock-card">
+      <div class="stock-id">${t.localCurto || t.localizacao || 'Etiqueta'}</div>
+      <div class="meta-line">Série: <span class="meta-value">${t.serie || '-'}</span></div>
+      <div class="meta-line">Armazém: <span class="meta-value">${t.armazem || '-'}</span></div>
+      <div class="meta-line">Localização: <span class="meta-value">${t.localizacao || '-'}</span></div>
+      <div class="meta-line">Equipamento: <span class="meta-value">${t.equipamento || '-'}</span></div>
+      <div class="meta-line">Cor: <span class="meta-value">${t.cor || '-'}</span></div>
+      <div class="meta-line">Lote: <span class="meta-value">${t.lote || '-'}</span></div>
+      <div class="meta-line">Data: <span class="meta-value">${t.dataEtiqueta || '-'}</span></div>
+      <div class="meta-line">Origem: <span class="meta-value">${t.origem || 'scan'}</span></div>
+      <div class="card-actions">
+        <button class="small-btn btn-edit" onclick='></button>
+        <button class="small-btn btn-use" onclick="regerarEtiquetaWordPartilhada('${t.idDoc}')">Download Word</button>
+        <button class="small-btn btn-delete" onclick="apagarEtiquetaWordPartilhada('${t.idDoc}')">Apagar</button>
+      </div>
+    </div>`).join("");
+}
+
+async function regerarEtiquetaWordPartilhada(id) {
+  const item = etiquetasWordGlobal.find(x => x.idDoc === id);
+  if (!item) return mostrarMensagem("Etiqueta não encontrada.", "erro");
+  await gerarWordEtiquetaPartilhada(item, { saveRecord: false, silent: false });
+}
+
+async function apagarEtiquetaWordPartilhada(id) {
+  if (!confirm("Queres apagar esta etiqueta?")) return;
+  try {
+    await db.collection("etiquetasWord").doc(id).delete();
+    mostrarMensagem("Etiqueta apagada.");
+  } catch (e) {
+    console.error(e);
+    mostrarMensagem("Erro ao apagar etiqueta.", "erro");
+  }
+}
+window.regerarEtiquetaWordPartilhada = regerarEtiquetaWordPartilhada;
+window.apagarEtiquetaWordPartilhada = apagarEtiquetaWordPartilhada;
+
+function bindEtiquetasWordRealtime() {
+  if (!db || !db.collection) return;
+  db.collection("etiquetasWord").orderBy("created", "desc").onSnapshot((snap) => {
+    etiquetasWordGlobal = [];
+    snap.forEach((doc) => {
+      const t = doc.data() || {};
+      t.idDoc = doc.id;
+      etiquetasWordGlobal.push(t);
+    });
+    try { saveBackupAppBraga(BACKUP_KEYS_APP_BRAGA.etiquetas, etiquetasWordGlobal); } catch (e) {}
+    renderEtiquetasWordCards();
+  }, (error) => {
+    console.error(error);
+    try { etiquetasWordGlobal = loadBackupAppBraga(BACKUP_KEYS_APP_BRAGA.etiquetas); } catch (e) { etiquetasWordGlobal = []; }
+    renderEtiquetasWordCards();
+  });
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  if (el("searchEtiquetasWord")) el("searchEtiquetasWord").addEventListener("input", renderEtiquetasWordCards);
+  if (el("filterEtiquetasOrigem")) el("filterEtiquetasOrigem").addEventListener("change", renderEtiquetasWordCards);
+  if (el("listaEtiquetasWord")) renderEtiquetasWordCards();
+  bindEtiquetasWordRealtime();
+});
 
