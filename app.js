@@ -96,7 +96,7 @@ function mostrarMensagem(texto, tipo = "sucesso") {
 /* =========================
    DADOS IMPRESSORAS
 ========================= */
-const impressorasData = [
+let impressorasData = [
   { modelo: "Kyocera P3155dn", serie: "R4B2229805", armazem: "Braga", localizacao: "Ilha 01", ip: "192.168.10.178" },
   { modelo: "Ecosys PA5500x", serie: "WD44336210", armazem: "Braga", localizacao: "Ilha 02", ip: "192.168.10.179" },
   { modelo: "Kyocera P3155dn", serie: "R4B1395508", armazem: "Braga", localizacao: "Ilha 03", ip: "192.168.10.180" },
@@ -304,7 +304,7 @@ let portasData = [
 /* =========================
    DADOS USERS
 ========================= */
-const usersData = [
+let usersData = [
   {
     nome: "Aguinaldo Enoque de Oliveira Epalanga",
     zona: "Armazém",
@@ -1511,6 +1511,7 @@ db.collection("manutencoes").orderBy("created", "desc").onSnapshot(snap => {
   hideBackupBadge();
   atualizarContadoresManutencao();
   renderManutencoes(manutencoesGlobal);
+  carregarImpressorasLocal();
   renderImpressoras();
 }, error => {
   console.error(error);
@@ -2548,6 +2549,32 @@ function filtrarPortasComEstado() {
 
 
 const PISTOLAS_STORAGE_KEY = 'appbraga_pistolas_custom_v1';
+
+const IMPRESSORAS_STORAGE_KEY = 'appbraga_impressoras_custom_v1';
+
+function prepararRefsImpressoras() {
+  impressorasData.forEach((p, i) => {
+    if (!p._ref) p._ref = `local-impressora-${i}-${String(p.serie || p.ip || i)}`;
+  });
+}
+
+function guardarImpressorasLocal() {
+  try {
+    const serializavel = impressorasData.map(p => ({ ...p }));
+    localStorage.setItem(IMPRESSORAS_STORAGE_KEY, JSON.stringify(serializavel));
+  } catch (e) { console.warn('Nao foi possivel guardar impressoras no localStorage.', e); }
+}
+
+function carregarImpressorasLocal() {
+  try {
+    const raw = localStorage.getItem(IMPRESSORAS_STORAGE_KEY);
+    if (!raw) { prepararRefsImpressoras(); return; }
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) { prepararRefsImpressoras(); return; }
+    impressorasData.splice(0, impressorasData.length, ...parsed);
+    prepararRefsImpressoras();
+  } catch (e) { console.warn('Nao foi possivel carregar impressoras do localStorage.', e); prepararRefsImpressoras(); }
+}
 const PORTAS_STORAGE_KEY = 'appbraga_portas_custom_v1';
 
 function prepararRefsPistolas() {
@@ -5079,3 +5106,125 @@ window.addEventListener("DOMContentLoaded", () => {
   bindEtiquetasWordRealtime();
 });
 
+
+
+function limparCamposUserModal() {
+  ["nome","zona","user_pc_eye","pass_remote","pass_eye_peak","op_pistola","pass_pistola","nome_pc","teamviewer","user_mo365","pw_mo365","email_bragalis","pass_bragalis"].forEach(f => {
+    const node = el("editUser_" + f); if (node) node.value = "";
+  });
+}
+
+function abrirNovoUser() {
+  userEditRef = null;
+  limparCamposUserModal();
+  const modal = el("modalEditarUser");
+  if (modal) modal.style.display = "flex";
+  const title = modal?.querySelector('h3'); if (title) title.textContent = 'Adicionar User';
+  const subtitle = modal?.querySelector('.section-subtitle'); if (subtitle) subtitle.textContent = 'Criar novo utilizador';
+}
+
+const __origFecharEditarUser = fecharEditarUser;
+fecharEditarUser = function() {
+  __origFecharEditarUser();
+  const modal = el("modalEditarUser");
+  const title = modal?.querySelector('h3'); if (title) title.textContent = 'Editar User';
+  const subtitle = modal?.querySelector('.section-subtitle'); if (subtitle) subtitle.textContent = 'Editar o utilizador selecionado';
+};
+
+const __origGuardarEdicaoUser = guardarEdicaoUser;
+guardarEdicaoUser = async function() {
+  if (userEditRef !== null && typeof userEditRef !== 'undefined') return await __origGuardarEdicaoUser();
+  const payload = {};
+  ["nome","zona","user_pc_eye","pass_remote","pass_eye_peak","op_pistola","pass_pistola","nome_pc","teamviewer","user_mo365","pw_mo365","email_bragalis","pass_bragalis"].forEach(f => {
+    payload[f] = el("editUser_" + f) ? el("editUser_" + f).value : "";
+  });
+  if (!String(payload.nome || '').trim()) return mostrarMensagem('Preenche o nome do user.', 'erro');
+  try {
+    if (window.db) {
+      const ref = await db.collection('users').add(payload);
+      usersData.push({ idDoc: ref.id, ...payload });
+    } else {
+      usersData.push({ _ref: `local-user-${Date.now()}`, ...payload });
+    }
+    guardarUsersLocal();
+    fecharEditarUser();
+    filtrarUsersComFiltros();
+    mostrarMensagem('User adicionado com sucesso.');
+  } catch (e) { console.error(e); mostrarMensagem('Erro ao adicionar o user.', 'erro'); }
+};
+
+function limparCamposPortaModal() {
+  ['editPorta','editLocal','editUser','editEquipamento','editIP'].forEach(id => { const n = el(id); if (n) n.value = ''; });
+}
+
+function abrirNovaPorta() {
+  portaEditRef = null;
+  limparCamposPortaModal();
+  const modal = el('modalEditarPorta');
+  if (modal) modal.style.display = 'flex';
+  const title = modal?.querySelector('h3'); if (title) title.textContent = 'Adicionar Porta';
+  const subtitle = modal?.querySelector('.section-subtitle'); if (subtitle) subtitle.textContent = 'Criar nova porta de rede';
+}
+
+const __origFecharEditarPorta = fecharEditarPorta;
+fecharEditarPorta = function() {
+  __origFecharEditarPorta();
+  const modal = el('modalEditarPorta');
+  const title = modal?.querySelector('h3'); if (title) title.textContent = 'Editar Porta';
+  const subtitle = modal?.querySelector('.section-subtitle'); if (subtitle) subtitle.textContent = 'Editar a porta selecionada';
+};
+
+const __origGuardarEdicaoPorta = guardarEdicaoPorta;
+guardarEdicaoPorta = async function() {
+  if (portaEditRef !== null && typeof portaEditRef !== 'undefined') return await __origGuardarEdicaoPorta();
+  const payload = {
+    porta: el('editPorta') ? el('editPorta').value : '',
+    local: el('editLocal') ? el('editLocal').value : '',
+    user: el('editUser') ? el('editUser').value : '',
+    equipamento: el('editEquipamento') ? el('editEquipamento').value : '',
+    ip: el('editIP') ? el('editIP').value : ''
+  };
+  if (!String(payload.porta || '').trim()) return mostrarMensagem('Preenche a porta.', 'erro');
+  try {
+    if (window.db) {
+      const ref = await db.collection('portas').add(payload);
+      portasData.push({ idDoc: ref.id, ...payload });
+    } else {
+      portasData.push({ _ref: `local-porta-${Date.now()}`, ...payload });
+    }
+    prepararRefsPortas();
+    guardarPortasLocal();
+    fecharEditarPorta();
+    filtrarPortasComEstado();
+    mostrarMensagem('Porta adicionada com sucesso.');
+  } catch (e) { console.error(e); mostrarMensagem('Erro ao adicionar a porta.', 'erro'); }
+};
+
+let impressoraNovaRef = null;
+function abrirNovaImpressora() {
+  impressoraNovaRef = null;
+  ['newImpModelo','newImpSerie','newImpArmazem','newImpLocalizacao','newImpIP'].forEach(id => { const n = el(id); if (n) n.value = ''; });
+  if (el('modalNovaImpressora')) el('modalNovaImpressora').style.display = 'flex';
+}
+function fecharNovaImpressora() {
+  impressoraNovaRef = null;
+  if (el('modalNovaImpressora')) el('modalNovaImpressora').style.display = 'none';
+}
+async function guardarNovaImpressora() {
+  const payload = {
+    modelo: el('newImpModelo') ? el('newImpModelo').value : '',
+    serie: el('newImpSerie') ? el('newImpSerie').value : '',
+    armazem: el('newImpArmazem') ? el('newImpArmazem').value : '',
+    localizacao: el('newImpLocalizacao') ? el('newImpLocalizacao').value : '',
+    ip: el('newImpIP') ? el('newImpIP').value : ''
+  };
+  if (!String(payload.modelo || '').trim() || !String(payload.serie || '').trim()) return mostrarMensagem('Preenche pelo menos modelo e série.', 'erro');
+  try {
+    impressorasData.push({ _ref: `local-impressora-${Date.now()}`, ...payload });
+    prepararRefsImpressoras();
+    guardarImpressorasLocal();
+    fecharNovaImpressora();
+    filtrarImpressoras();
+    mostrarMensagem('Impressora adicionada com sucesso.');
+  } catch (e) { console.error(e); mostrarMensagem('Erro ao adicionar a impressora.', 'erro'); }
+}
