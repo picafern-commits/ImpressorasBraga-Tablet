@@ -113,6 +113,8 @@ const impressorasData = [
   { modelo: "TASKalfa 2554ci", serie: "RVP0Z03715", armazem: "Vila Real", localizacao: "Ilha 03", ip: "192.168.11.197" }
 ];
 
+const IMPRESSORAS_STORAGE_KEY = "appbraga_impressoras_v1";
+
 const manutencaoLocais = [
   "Ilha 01",
   "Ilha 02",
@@ -2308,6 +2310,24 @@ function abrirHistoricoImpressora(item) {
   `;
 }
 
+function guardarImpressorasLocal() {
+  try {
+    impressorasData.forEach((item, i) => { if (!item._ref) item._ref = item.idDoc || `local-impressora-${i}`; });
+    localStorage.setItem(IMPRESSORAS_STORAGE_KEY, JSON.stringify(impressorasData.map(i => ({ ...i }))));
+  } catch (e) { console.warn('Nao foi possivel guardar impressoras no localStorage.', e); }
+}
+
+function carregarImpressorasLocal() {
+  try {
+    const raw = localStorage.getItem(IMPRESSORAS_STORAGE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || !parsed.length) return;
+    parsed.forEach((item, i) => { if (!item._ref) item._ref = item.idDoc || `local-impressora-${i}`; });
+    impressorasData.splice(0, impressorasData.length, ...parsed);
+  } catch (e) { console.warn('Nao foi possivel carregar impressoras do localStorage.', e); }
+}
+
 function renderImpressoras(lista = impressorasData) {
   const tbody = el("impressorasTableBody");
   if (!tbody) return;
@@ -2750,6 +2770,7 @@ window.addEventListener("DOMContentLoaded", () => {
   preencherLocaisManutencao();
   preencherFormularioManutencao();
 
+  carregarImpressorasLocal();
   renderImpressoras();
   renderManutencoes(manutencoesGlobal);
   carregarPistolasLocal();
@@ -3927,6 +3948,14 @@ function idxPorRef(lista, ref) {
 /* Portas */
 let portaEditRef = null;
 
+function abrirAdicionarPorta() {
+  portaEditRef = "__new__";
+  [["editPorta",""],["editLocal",""],["editUser",""],["editEquipamento",""],["editIP",""]].forEach(([id,v]) => { const node = el(id); if (node) node.value = v; });
+  const h3 = document.querySelector('#modalEditarPorta h3'); if (h3) h3.textContent = 'Adicionar Porta';
+  const sub = document.querySelector('#modalEditarPorta .section-subtitle'); if (sub) sub.textContent = 'Criar uma nova porta de rede';
+  if (el("modalEditarPorta")) el("modalEditarPorta").style.display = "flex";
+}
+
 function editarPorta(ref) {
   const item = itemPorRef(portasData, ref);
   if (!item) return mostrarMensagem("Porta não encontrada.", "erro");
@@ -3941,11 +3970,14 @@ function editarPorta(ref) {
 
 function fecharEditarPorta() {
   portaEditRef = null;
+  const h3 = document.querySelector('#modalEditarPorta h3'); if (h3) h3.textContent = 'Editar Porta';
+  const sub = document.querySelector('#modalEditarPorta .section-subtitle'); if (sub) sub.textContent = 'Editar a porta selecionada';
   if (el("modalEditarPorta")) el("modalEditarPorta").style.display = "none";
 }
 
 async function guardarEdicaoPorta() {
   if (portaEditRef === null || typeof portaEditRef === "undefined") return mostrarMensagem("Nenhuma porta selecionada.", "erro");
+  const isNovaPorta = portaEditRef === "__new__";
   const payload = {
     porta: el("editPorta") ? el("editPorta").value : "",
     local: el("editLocal") ? el("editLocal").value : "",
@@ -3955,7 +3987,14 @@ async function guardarEdicaoPorta() {
   };
 
   try {
-    if (typeof portaEditRef === "string" && window.db) {
+    if (isNovaPorta) {
+      if (window.db) {
+        const docRef = await db.collection("portas").add(payload);
+        portasData.unshift({ idDoc: docRef.id, ...payload });
+      } else {
+        portasData.unshift({ _ref: `local-porta-${Date.now()}`, ...payload });
+      }
+    } else if (typeof portaEditRef === "string" && window.db) {
       await db.collection("portas").doc(portaEditRef).update(payload);
       const idx = idxPorRef(portasData, portaEditRef);
       if (idx >= 0) portasData[idx] = { ...portasData[idx], ...payload };
@@ -3966,7 +4005,7 @@ async function guardarEdicaoPorta() {
     guardarPortasLocal();
     fecharEditarPorta();
     filtrarPortasComEstado();
-    mostrarMensagem("Porta atualizada com sucesso.");
+    mostrarMensagem(isNovaPorta ? "Porta adicionada com sucesso." : "Porta atualizada com sucesso.");
   } catch (e) {
     console.error(e);
     mostrarMensagem("Erro ao atualizar a porta.", "erro");
@@ -3993,6 +4032,15 @@ async function apagarPorta(ref) {
 /* Users */
 let userEditRef = null;
 
+function abrirAdicionarUser() {
+  userEditRef = "__new__";
+  const fields = ["nome","zona","user_pc_eye","pass_remote","pass_eye_peak","op_pistola","pass_pistola","nome_pc","teamviewer","user_mo365","pw_mo365","email_bragalis","pass_bragalis"];
+  fields.forEach(f => { const node = el("editUser_" + f); if (node) node.value = ""; });
+  const h3 = document.querySelector('#modalEditarUser h3'); if (h3) h3.textContent = 'Adicionar User';
+  const sub = document.querySelector('#modalEditarUser .section-subtitle'); if (sub) sub.textContent = 'Criar um novo utilizador';
+  if (el("modalEditarUser")) el("modalEditarUser").style.display = "flex";
+}
+
 function editarUser(ref) {
   const item = itemPorRef(usersData, ref);
   if (!item) return mostrarMensagem("User não encontrado.", "erro");
@@ -4004,18 +4052,28 @@ function editarUser(ref) {
 
 function fecharEditarUser() {
   userEditRef = null;
+  const h3 = document.querySelector('#modalEditarUser h3'); if (h3) h3.textContent = 'Editar User';
+  const sub = document.querySelector('#modalEditarUser .section-subtitle'); if (sub) sub.textContent = 'Editar o utilizador selecionado';
   if (el("modalEditarUser")) el("modalEditarUser").style.display = "none";
 }
 
 async function guardarEdicaoUser() {
   if (userEditRef === null || typeof userEditRef === "undefined") return mostrarMensagem("Nenhum user selecionado.", "erro");
+  const isNovoUser = userEditRef === "__new__";
   const payload = {};
   ["nome","zona","user_pc_eye","pass_remote","pass_eye_peak","op_pistola","pass_pistola","nome_pc","teamviewer","user_mo365","pw_mo365","email_bragalis","pass_bragalis"].forEach(f => {
     payload[f] = el("editUser_" + f) ? el("editUser_" + f).value : "";
   });
 
   try {
-    if (typeof userEditRef === "string" && window.db) {
+    if (isNovoUser) {
+      if (window.db) {
+        const docRef = await db.collection("users").add(payload);
+        usersData.unshift({ idDoc: docRef.id, ...payload });
+      } else {
+        usersData.unshift({ _ref: `local-user-${Date.now()}`, ...payload });
+      }
+    } else if (typeof userEditRef === "string" && window.db) {
       await db.collection("users").doc(userEditRef).update(payload);
       const idx = idxPorRef(usersData, userEditRef);
       if (idx >= 0) usersData[idx] = { ...usersData[idx], ...payload };
@@ -4026,7 +4084,7 @@ async function guardarEdicaoUser() {
     guardarUsersLocal();
     fecharEditarUser();
     filtrarUsersComFiltros();
-    mostrarMensagem("User atualizado com sucesso.");
+    mostrarMensagem(isNovoUser ? "User adicionado com sucesso." : "User atualizado com sucesso.");
   } catch (e) {
     console.error(e);
     mostrarMensagem("Erro ao atualizar o user.", "erro");
@@ -4223,16 +4281,11 @@ function imprimirUser(ref) {
 /* Pistolas */
 let pistolaEditRef = null;
 
-
-
-function abrirAddPistola() {
-  pistolaEditRef = "__novo__";
-  ["num","nome","password","cn","sn","mac","operador","armazem","prontas"].forEach(f => {
-    const node = el("editP_" + f);
-    if (node) node.value = "";
-  });
-  if (el("tituloModalPistola")) el("tituloModalPistola").textContent = "Adicionar Pistola CK65";
-  if (el("subtituloModalPistola")) el("subtituloModalPistola").textContent = "Criar nova pistola";
+function abrirAdicionarPistola() {
+  pistolaEditRef = "__new__";
+  ["num","nome","password","cn","sn","mac","operador","armazem","prontas"].forEach(f => { const node = el("editP_" + f); if (node) node.value = ""; });
+  const h3 = document.querySelector('#modalEditarPistola h3'); if (h3) h3.textContent = 'Adicionar Pistola CK65';
+  const sub = document.querySelector('#modalEditarPistola .section-subtitle'); if (sub) sub.textContent = 'Criar uma nova pistola';
   if (el("modalEditarPistola")) el("modalEditarPistola").style.display = "flex";
 }
 
@@ -4240,8 +4293,6 @@ function editarPistola(ref) {
   const item = itemPorRef(pistolasData, ref);
   if (!item) return mostrarMensagem("Pistola não encontrada.", "erro");
   pistolaEditRef = ref;
-  if (el("tituloModalPistola")) el("tituloModalPistola").textContent = "Editar Pistola CK65";
-  if (el("subtituloModalPistola")) el("subtituloModalPistola").textContent = "Editar a pistola selecionada";
   ["num","nome","password","cn","sn","mac","operador","armazem","prontas"].forEach(f => {
     const node = el("editP_" + f);
     if (node) node.value = item[f] || "";
@@ -4251,32 +4302,28 @@ function editarPistola(ref) {
 
 function fecharEditarPistola() {
   pistolaEditRef = null;
+  const h3 = document.querySelector('#modalEditarPistola h3'); if (h3) h3.textContent = 'Editar Pistola CK65';
+  const sub = document.querySelector('#modalEditarPistola .section-subtitle'); if (sub) sub.textContent = 'Editar a pistola selecionada';
   if (el("modalEditarPistola")) el("modalEditarPistola").style.display = "none";
 }
 
 async function guardarEdicaoPistola() {
   if (pistolaEditRef === null || typeof pistolaEditRef === "undefined") return mostrarMensagem("Nenhuma pistola selecionada.", "erro");
+  const isNovaPistola = pistolaEditRef === "__new__";
   const payload = {};
   ["num","nome","password","cn","sn","mac","operador","armazem","prontas"].forEach(f => {
     payload[f] = el("editP_" + f) ? el("editP_" + f).value : "";
   });
 
   try {
-    if (pistolaEditRef === "__novo__") {
-      const novo = { ...payload, _ref: `local-pistola-${Date.now()}` };
+    if (isNovaPistola) {
       if (window.db) {
-        const ref = await db.collection("pistolas").add(payload);
-        novo.idDoc = ref.id;
-        novo._ref = ref.id;
+        const docRef = await db.collection("pistolas").add(payload);
+        pistolasData.unshift({ idDoc: docRef.id, ...payload });
+      } else {
+        pistolasData.unshift({ _ref: `local-pistola-${Date.now()}`, ...payload });
       }
-      pistolasData.push(novo);
-      guardarPistolasLocal();
-      fecharEditarPistola();
-      filtrarPistolasComFiltros();
-      return mostrarMensagem("Pistola adicionada com sucesso.");
-    }
-
-    if (typeof pistolaEditRef === "string" && window.db) {
+    } else if (typeof pistolaEditRef === "string" && window.db) {
       await db.collection("pistolas").doc(pistolaEditRef).update(payload);
       const idx = idxPorRef(pistolasData, pistolaEditRef);
       if (idx >= 0) pistolasData[idx] = { ...pistolasData[idx], ...payload };
@@ -4287,10 +4334,10 @@ async function guardarEdicaoPistola() {
     guardarPistolasLocal();
     fecharEditarPistola();
     filtrarPistolasComFiltros();
-    mostrarMensagem("Pistola atualizada com sucesso.");
+    mostrarMensagem(isNovaPistola ? "Pistola adicionada com sucesso." : "Pistola atualizada com sucesso.");
   } catch (e) {
     console.error(e);
-    mostrarMensagem("Erro ao guardar a pistola.", "erro");
+    mostrarMensagem("Erro ao atualizar a pistola.", "erro");
   }
 }
 
@@ -4311,21 +4358,53 @@ async function apagarPistola(ref) {
   }
 }
 
+
+function abrirAdicionarImpressora() {
+  [["addImp_modelo",""],["addImp_serie",""],["addImp_armazem",""],["addImp_localizacao",""],["addImp_ip",""]].forEach(([id,v]) => { const node = el(id); if (node) node.value = v; });
+  if (el("modalAdicionarImpressora")) el("modalAdicionarImpressora").style.display = "flex";
+}
+
+function fecharAdicionarImpressora() {
+  if (el("modalAdicionarImpressora")) el("modalAdicionarImpressora").style.display = "none";
+}
+
+async function guardarNovaImpressora() {
+  const payload = {
+    modelo: el("addImp_modelo")?.value || "",
+    serie: el("addImp_serie")?.value || "",
+    armazem: el("addImp_armazem")?.value || "",
+    localizacao: el("addImp_localizacao")?.value || "",
+    ip: el("addImp_ip")?.value || ""
+  };
+  if (!normalizarTexto(payload.modelo) || !normalizarTexto(payload.serie) || !normalizarTexto(payload.ip)) {
+    return mostrarMensagem("Preenche pelo menos Modelo, Série e IP.", "erro");
+  }
+  impressorasData.unshift({ _ref: `local-impressora-${Date.now()}`, ...payload });
+  guardarImpressorasLocal();
+  fecharAdicionarImpressora();
+  filtrarImpressoras();
+  mostrarMensagem("Impressora adicionada com sucesso.");
+}
+
 window.editarPorta = editarPorta;
 window.fecharEditarPorta = fecharEditarPorta;
 window.guardarEdicaoPorta = guardarEdicaoPorta;
 window.apagarPorta = apagarPorta;
+window.abrirAdicionarPorta = abrirAdicionarPorta;
+window.abrirAdicionarImpressora = abrirAdicionarImpressora;
+window.fecharAdicionarImpressora = fecharAdicionarImpressora;
+window.guardarNovaImpressora = guardarNovaImpressora;
 
 window.editarUser = editarUser;
 window.fecharEditarUser = fecharEditarUser;
 window.guardarEdicaoUser = guardarEdicaoUser;
 window.apagarUser = apagarUser;
 
-window.abrirAddPistola = abrirAddPistola;
 window.editarPistola = editarPistola;
 window.fecharEditarPistola = fecharEditarPistola;
 window.guardarEdicaoPistola = guardarEdicaoPistola;
 window.apagarPistola = apagarPistola;
+window.abrirAdicionarPistola = abrirAdicionarPistola;
 
 
 /* ===== MODO VISUAL ===== */
