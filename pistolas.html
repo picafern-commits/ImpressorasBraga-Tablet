@@ -66,6 +66,7 @@
       <input id="searchPistolas" type="text" placeholder="Pesquisar..." oninput="filtrarPistolasComFiltros()">
       <select id="filterarmazemPistolas" onchange="filtrarPistolasComFiltros()"><option value="">Todos os armazéns</option><option value="Braga">Braga</option><option value="Vila Real">Vila Real</option></select>
       <select id="filterTipoPistolas" onchange="filtrarPistolasComFiltros()"><option value="">Todos os tipos</option><option value="ativa">Ativa</option><option value="reserva">Reserva</option></select>
+      <button class="primary-btn" onclick="abrirAddPistola()">+ Adicionar Pistola</button>
     </div>
     <div id="listaPistolas" class="cards-list"></div>
   </div>
@@ -75,8 +76,8 @@
     <div class="modal-card">
       <div class="section-header">
         <div>
-          <h3>Editar Pistola CK65</h3>
-          <p class="section-subtitle">Editar a pistola selecionada</p>
+          <h3 id="tituloModalPistola">Editar Pistola CK65</h3>
+          <p class="section-subtitle" id="subtituloModalPistola">Editar a pistola selecionada</p>
         </div>
       </div>
       <div class="form-grid">
