@@ -5189,35 +5189,13 @@ window.addEventListener("DOMContentLoaded", () => {
 });
 
 
-// ===== APP BRAGA - MOBILE SIDEBAR =====
-(function () {
-  function ensureMobileShell() {
-    if (!document.querySelector('.mobile-sidebar-toggle')) {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'mobile-sidebar-toggle';
-      btn.setAttribute('aria-label', 'Abrir menu');
-      btn.innerHTML = '☰';
-      document.body.insertBefore(btn, document.body.firstChild);
-    }
-    if (!document.querySelector('.sidebar-overlay-appbraga')) {
-      const overlay = document.createElement('div');
-      overlay.className = 'sidebar-overlay-appbraga';
-      document.body.insertBefore(overlay, document.body.firstChild);
-    }
-  }
-  function closeSidebar() { document.body.classList.remove('sidebar-mobile-open'); }
-  function toggleSidebar() { document.body.classList.toggle('sidebar-mobile-open'); }
-  window.toggleSidebar = toggleSidebar;
-  window.closeSidebarMobile = closeSidebar;
-  document.addEventListener('DOMContentLoaded', function () {
-    ensureMobileShell();
-    const toggle = document.querySelector('.mobile-sidebar-toggle');
-    const overlay = document.querySelector('.sidebar-overlay-appbraga');
-    const sidebar = document.querySelector('.sidebar');
-    if (toggle) toggle.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); toggleSidebar(); });
-    if (overlay) overlay.addEventListener('click', closeSidebar);
-    if (sidebar) sidebar.querySelectorAll('a').forEach(function (link) { link.addEventListener('click', closeSidebar); });
-    document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') closeSidebar(); });
-  });
+
+/* =========================================================
+   APP BRAGA — SIDEBAR BRINKA + DASHBOARD CLEAN
+   ========================================================= */
+(function(){
+  function closestPanel(el){while(el&&el!==document.body){if(el.classList&&el.classList.contains('panel'))return el;el=el.parentElement;}return null;}
+  function initBrinkaSidebar(){var sidebar=document.querySelector('.sidebar');if(!sidebar)return;if(!document.querySelector('.app-menu-toggle')){var btn=document.createElement('button');btn.className='app-menu-toggle';btn.type='button';btn.setAttribute('aria-label','Abrir menu');btn.textContent='☰';document.body.appendChild(btn);}if(!document.querySelector('.app-sidebar-overlay')){var ov=document.createElement('div');ov.className='app-sidebar-overlay';document.body.appendChild(ov);}var btn=document.querySelector('.app-menu-toggle');var overlay=document.querySelector('.app-sidebar-overlay');function open(){sidebar.classList.add('app-open');overlay.classList.add('show');btn.textContent='×';}function close(){sidebar.classList.remove('app-open');overlay.classList.remove('show');btn.textContent='☰';}btn.onclick=function(e){e.preventDefault();e.stopPropagation();sidebar.classList.contains('app-open')?close():open();};overlay.onclick=close;sidebar.querySelectorAll('a').forEach(function(a){a.addEventListener('click',close);});}
+  function cleanDashboard(){var path=(location.pathname||'').toLowerCase();var isDashboard=path.endsWith('/')||path.endsWith('/index.html')||path.indexOf('index.html')!==-1;if(!isDashboard)return;document.body.classList.add('dashboard-clean');var removeTitles=['Centro Operacional Inteligente','Prioridade Máxima','Top Consumo','Alertas do Dia','Alertas Inteligentes'];document.querySelectorAll('h3').forEach(function(h){var t=(h.textContent||'').trim();if(removeTitles.indexOf(t)>=0){var p=closestPanel(h);if(p)p.classList.add('is-dashboard-removed');}});}
+  if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',function(){initBrinkaSidebar();cleanDashboard();});}else{initBrinkaSidebar();cleanDashboard();}
 })();
