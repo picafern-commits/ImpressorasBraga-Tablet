@@ -2,58 +2,43 @@ const APP_VERSION = "1.5.0";
 const firebaseConfig = {
   apiKey: "AIzaSyCSgw4rhBLW5mq4QClulubf6e0hf5lDJbo",
   authDomain: "toner-manager-756c4.firebaseapp.com",
-  databaseURL: "https://toner-manager-756c4-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "toner-manager-756c4",
-  storageBucket: "toner-manager-756c4.firebasestorage.app",
-  messagingSenderId: "1004492465437",
-  appId: "1:1004492465437:web:6a745933c51fc17b04adf4"
+  projectId: "toner-manager-756c4"
 };
 
 if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
+const db = firebase.firestore();
+
 firebase.auth().setPersistence(
   firebase.auth.Auth.Persistence.LOCAL
 ).catch(console.error);
 
-const db = firebase.firestore();
-
-// PERSISTÊNCIA FIREBASE
-firebase.auth().setPersistence(
-  firebase.auth.Auth.Persistence.LOCAL
-).catch((err) => {
-
-  console.log("Erro persistence:", err);
-
-});
-
-// FIRESTORE PERSISTENCE
-firebase.firestore().enablePersistence({
-  synchronizeTabs: true
-}).catch((err) => {
-
-  console.log("Erro firestore persistence:", err);
-
-});
-
-// FORÇAR NETWORK
-firebase.firestore().enableNetwork().catch((err) => {
-
-  console.log("Erro network:", err);
-
-});
-
-firebase.firestore().enableNetwork().catch(console.error);
 
 
-const BACKUP_KEYS_APP_BRAGA = {};
+const BACKUP_KEYS_APP_BRAGA = {
+  stock: "appBraga_backup_stock",
+  historico: "appBraga_backup_historico",
+  pcs: "appBraga_backup_pcs",
+  manutencoes: "appBraga_backup_manutencoes"
+};
 
-function saveBackupAppBraga() {
-  return;
+function saveBackupAppBraga(key, data) {
+  try {
+    localStorage.setItem(key, JSON.stringify(data || []));
+  } catch (e) {
+    console.error("Erro backup local:", e);
+  }
 }
 
-function loadBackupAppBraga() {
-  return [];
+function loadBackupAppBraga(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    console.error("Erro a ler backup local:", e);
+    return [];
+  }
 }
 
 function showBackupBadge() {
