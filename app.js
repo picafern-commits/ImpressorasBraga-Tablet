@@ -5201,3 +5201,87 @@ window.addEventListener("DOMContentLoaded", () => {
   function cleanDashboard(){var path=(location.pathname||'').toLowerCase();var isDashboard=path.endsWith('/')||path.endsWith('/index.html')||path.indexOf('index.html')!==-1;if(!isDashboard)return;document.body.classList.add('dashboard-clean');var removeTitles=['Centro Operacional Inteligente','Prioridade Máxima','Top Consumo','Alertas do Dia','Alertas Inteligentes'];document.querySelectorAll('h3').forEach(function(h){var t=(h.textContent||'').trim();if(removeTitles.indexOf(t)>=0){var p=closestPanel(h);if(p)p.classList.add('is-dashboard-removed');}});}
   if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',function(){initBrinkaSidebar();cleanDashboard();});}else{initBrinkaSidebar();cleanDashboard();}
 })();
+
+
+/* =========================
+   FIREBASE REALTIME SYNC
+========================= */
+
+async function syncCollection(collectionName, localData) {
+  const snapshot = await db.collection(collectionName).get();
+
+  if (snapshot.empty) {
+    for (const item of localData) {
+      await db.collection(collectionName).add(item);
+    }
+    console.log(collectionName + " migrado para Firebase");
+  }
+}
+
+async function iniciarRealtimeSync() {
+
+  try {
+
+    await syncCollection("portas", portasData || []);
+    await syncCollection("pistolas", pistolasData || []);
+    await syncCollection("users", usersData || []);
+
+    db.collection("portas").onSnapshot((snapshot) => {
+
+      portasData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      if (typeof renderPortas === "function") {
+        renderPortas();
+      }
+
+      if (typeof filtrarPortasComEstado === "function") {
+        filtrarPortasComEstado();
+      }
+    });
+
+    db.collection("pistolas").onSnapshot((snapshot) => {
+
+      pistolasData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      if (typeof renderPistolas === "function") {
+        renderPistolas();
+      }
+
+      if (typeof filtrarPistolasComFiltros === "function") {
+        filtrarPistolasComFiltros();
+      }
+    });
+
+    db.collection("users").onSnapshot((snapshot) => {
+
+      usersData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      if (typeof renderUsers === "function") {
+        renderUsers();
+      }
+
+      if (typeof filtrarUsersComFiltros === "function") {
+        filtrarUsersComFiltros();
+      }
+    });
+
+    console.log("Realtime Firebase ativo");
+
+  } catch (e) {
+    console.error("Erro realtime:", e);
+  }
+}
+
+setTimeout(() => {
+  iniciarRealtimeSync();
+}, 1000);
+
