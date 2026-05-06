@@ -8,28 +8,23 @@ const firebaseConfig = {
 if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
+firebase.auth().setPersistence(
+  firebase.auth.Auth.Persistence.LOCAL
+).catch(console.error);
+
 const db = firebase.firestore();
-firebase.firestore().enableNetwork();
+
+firebase.firestore().enableNetwork().catch(console.error);
 
 
 const BACKUP_KEYS_APP_BRAGA = {};
 
-function saveBackupAppBraga(key, data) {
-  try {
-    localStorage.setItem(key, JSON.stringify(data || []));
-  } catch (e) {
-    console.error("Erro backup local:", e);
-  }
+function saveBackupAppBraga() {
+  return;
 }
 
-function null {
-  try {
-    const raw = null;
-    return raw ? JSON.parse(raw) : [];
-  } catch (e) {
-    console.error("Erro a ler backup local:", e);
-    return [];
-  }
+function loadBackupAppBraga() {
+  return [];
 }
 
 function showBackupBadge() {
@@ -1209,7 +1204,7 @@ function guardarUsersLocal() {
 
 function carregarUsersLocal() {
   try {
-    const raw = null;
+    const raw = localStorage.getItem(USERS_STORAGE_KEY);
     if (!raw) {
       prepararRefsUsers();
       return;
@@ -1319,7 +1314,7 @@ function preencherLocaisManutencao() {
 }
 
 function preencherFormularioManutencao() {
-  const dados = null;
+  const dados = localStorage.getItem("manutencaoPreenchida");
   if (!dados) return;
 
   try {
@@ -1430,7 +1425,7 @@ db.collection("stock").orderBy("created", "desc").onSnapshot(snap => {
   renderModoGestorExtremo();
 }, error => {
   console.error(error);
-  stockGlobal = null;
+  stockGlobal = loadBackupAppBraga(BACKUP_KEYS_APP_BRAGA.stock);
   setText("countStock", stockGlobal.length);
   showBackupBadge();
   renderDashboardCards(stockGlobal);
@@ -1462,7 +1457,7 @@ db.collection("historico").orderBy("created", "desc").onSnapshot(snap => {
   renderModoGestorExtremo();
 }, error => {
   console.error(error);
-  historicoGlobal = null;
+  historicoGlobal = loadBackupAppBraga(BACKUP_KEYS_APP_BRAGA.historico);
   setText("countUsados", historicoGlobal.length);
   showBackupBadge();
   renderHistoricoCards(historicoGlobal);
@@ -1489,7 +1484,7 @@ db.collection("pcs").orderBy("created", "desc").onSnapshot(snap => {
   renderModoGestorExtremo();
 }, error => {
   console.error(error);
-  pcsGlobal = null;
+  pcsGlobal = loadBackupAppBraga(BACKUP_KEYS_APP_BRAGA.pcs);
   setText("countPCs", pcsGlobal.length);
   showBackupBadge();
   renderPCCards(pcsGlobal);
@@ -1512,7 +1507,7 @@ db.collection("manutencoes").orderBy("created", "desc").onSnapshot(snap => {
   renderImpressoras();
 }, error => {
   console.error(error);
-  manutencoesGlobal = null;
+  manutencoesGlobal = loadBackupAppBraga(BACKUP_KEYS_APP_BRAGA.manutencoes);
   showBackupBadge();
   atualizarContadoresManutencao();
   renderManutencoes(manutencoesGlobal);
@@ -2004,7 +1999,7 @@ async function apagarManutencao(id) {
 }
 
 function carregarEdicaoToner() {
-  const item = null;
+  const item = localStorage.getItem("editarToner");
   if (!item || !el("equipamento")) return;
 
   try {
@@ -2315,7 +2310,7 @@ function guardarImpressorasLocal() {
 
 function carregarImpressorasLocal() {
   try {
-    const raw = null;
+    const raw = localStorage.getItem(IMPRESSORAS_STORAGE_KEY);
     if (!raw) return;
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed) || !parsed.length) return;
@@ -2583,7 +2578,7 @@ function guardarPistolasLocal() {
 
 function carregarPistolasLocal() {
   try {
-    const raw = null;
+    const raw = localStorage.getItem(PISTOLAS_STORAGE_KEY);
     if (!raw) {
       prepararRefsPistolas();
       return;
@@ -2618,7 +2613,7 @@ function guardarPortasLocal() {
 
 function carregarPortasLocal() {
   try {
-    const raw = null;
+    const raw = localStorage.getItem(PORTAS_STORAGE_KEY);
     if (!raw) {
       prepararRefsPortas();
       return;
@@ -2742,7 +2737,7 @@ window.addEventListener("DOMContentLoaded", () => {
   if (el("historicoImpressoraPanel") && impressorasData && impressorasData.length) { abrirHistoricoImpressora(impressorasData[0]); }
   const sw = el("darkSwitch");
 
-  if (null === "dark") {
+  if (localStorage.getItem("modo") === "dark") {
     document.body.classList.add("dark");
     document.documentElement.classList.add("dark");
     if (sw) sw.checked = true;
@@ -2752,7 +2747,7 @@ window.addEventListener("DOMContentLoaded", () => {
     sw.addEventListener("change", () => {
       document.body.classList.toggle("dark", sw.checked);
       document.documentElement.classList.toggle("dark", sw.checked);
-      // local backup disabled
+      localStorage.setItem("modo", sw.checked ? "dark" : "light");
     });
   }
 
@@ -4582,7 +4577,7 @@ function tryRenderAppBraga(fn) {
 
 function loadStockMinConfig() {
   try {
-    const saved = JSON.parse(null || "{}");
+    const saved = JSON.parse(localStorage.getItem("stockMinConfig") || "{}");
     return { ...STOCK_MIN_DEFAULTS, ...saved };
   } catch (e) {
     console.error(e);
@@ -4659,7 +4654,7 @@ function resetStockMinimoConfig() {
 }
 
 function ensureLoteFieldOnEdit() {
-  const item = null;
+  const item = localStorage.getItem("editarToner");
   if (!item || !el("lote")) return;
   try {
     const toner = JSON.parse(item);
@@ -5172,7 +5167,7 @@ function bindEtiquetasWordRealtime() {
     renderEtiquetasWordCards();
   }, (error) => {
     console.error(error);
-    try { etiquetasWordGlobal = null; } catch (e) { etiquetasWordGlobal = []; }
+    try { etiquetasWordGlobal = loadBackupAppBraga(BACKUP_KEYS_APP_BRAGA.etiquetas); } catch (e) { etiquetasWordGlobal = []; }
     renderEtiquetasWordCards();
   });
 }
