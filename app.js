@@ -14,6 +14,31 @@ firebase.auth().setPersistence(
 
 const db = firebase.firestore();
 
+// PERSISTÊNCIA FIREBASE
+firebase.auth().setPersistence(
+  firebase.auth.Auth.Persistence.LOCAL
+).catch((err) => {
+
+  console.log("Erro persistence:", err);
+
+});
+
+// FIRESTORE PERSISTENCE
+firebase.firestore().enablePersistence({
+  synchronizeTabs: true
+}).catch((err) => {
+
+  console.log("Erro firestore persistence:", err);
+
+});
+
+// FORÇAR NETWORK
+firebase.firestore().enableNetwork().catch((err) => {
+
+  console.log("Erro network:", err);
+
+});
+
 firebase.firestore().enableNetwork().catch(console.error);
 
 
