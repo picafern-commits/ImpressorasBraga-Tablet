@@ -1,22 +1,9 @@
 const APP_VERSION = "1.5.0";
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyCSgw4rhBLW5mq4QClulubf6e0hf5lDJbo",
   authDomain: "toner-manager-756c4.firebaseapp.com",
-  databaseURL: "https://toner-manager-756c4-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "toner-manager-756c4",
-  storageBucket: "toner-manager-756c4.firebasestorage.app",
-  messagingSenderId: "1004492465437",
-  appId: "1:1004492465437:web:6a745933c51fc17b04adf4"
+  projectId: "toner-manager-756c4"
 };
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
 
 if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
