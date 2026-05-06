@@ -2,15 +2,9 @@
   "name": "App Braga",
   "short_name": "App Braga",
   "start_url": "./index.html",
-  "scope": "./",
-  "display": "fullscreen",
-  "display_override": [
-    "fullscreen",
-    "standalone"
-  ],
+  "display": "standalone",
   "background_color": "#0f172a",
-  "theme_color": "#0f172a",
-  "orientation": "any",
+  "theme_color": "#111827",
   "icons": [
     {
       "src": "./icon-192.png",
