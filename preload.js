@@ -8,10 +8,3 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getPrinterHTML: (ip) => ipcRenderer.invoke("printer:get-html", ip),
   getTonerSNMP: (ip) => ipcRenderer.invoke("printer:get-toner-snmp", ip)
 });
-
-
-// Sidebar toggle added automatically
-function toggleSidebar() {
-  const sb = document.querySelector(".sidebar");
-  if (sb) sb.classList.toggle("active");
-}
