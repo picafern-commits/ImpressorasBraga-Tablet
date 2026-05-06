@@ -9,6 +9,8 @@ if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
 const db = firebase.firestore();
+window.db = db;
+window.firebaseReady = true;
 
 
 const BACKUP_KEYS_APP_BRAGA = {
