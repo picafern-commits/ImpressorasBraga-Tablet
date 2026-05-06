@@ -3763,6 +3763,9 @@ async function carregarPortasComFallback() {
       portasData = snap.docs.map(doc => ({ idDoc: doc.id, ...doc.data() }));
       prepararRefsPortas();
       guardarPortasLocal();
+    if(window.db){
+      carregarPortasComFallback();
+    }
       renderPortas(portasData);
     }, error => {
       console.error(error);
@@ -4005,6 +4008,9 @@ async function guardarEdicaoPorta() {
       if (idx >= 0) portasData[idx] = { ...portasData[idx], ...payload };
     }
     guardarPortasLocal();
+    if(window.db){
+      carregarPortasComFallback();
+    }
     fecharEditarPorta();
     filtrarPortasComEstado();
     mostrarMensagem(isNovaPorta ? "Porta adicionada com sucesso." : "Porta atualizada com sucesso.");
@@ -4023,6 +4029,9 @@ async function apagarPorta(ref) {
     const idx = idxPorRef(portasData, ref);
     if (idx >= 0) portasData.splice(idx, 1);
     guardarPortasLocal();
+    if(window.db){
+      carregarPortasComFallback();
+    }
     filtrarPortasComEstado();
     mostrarMensagem("Porta apagada com sucesso.");
   } catch (e) {
@@ -4084,6 +4093,9 @@ async function guardarEdicaoUser() {
       if (idx >= 0) usersData[idx] = { ...usersData[idx], ...payload };
     }
     guardarUsersLocal();
+    if(window.db){
+      carregarUsersComFallback();
+    }
     fecharEditarUser();
     filtrarUsersComFiltros();
     mostrarMensagem(isNovoUser ? "User adicionado com sucesso." : "User atualizado com sucesso.");
@@ -4102,6 +4114,9 @@ async function apagarUser(ref) {
     const idx = idxPorRef(usersData, ref);
     if (idx >= 0) usersData.splice(idx, 1);
     guardarUsersLocal();
+    if(window.db){
+      carregarUsersComFallback();
+    }
     filtrarUsersComFiltros();
     mostrarMensagem("User apagado com sucesso.");
   } catch (e) {
@@ -4334,6 +4349,9 @@ async function guardarEdicaoPistola() {
       if (idx >= 0) pistolasData[idx] = { ...pistolasData[idx], ...payload };
     }
     guardarPistolasLocal();
+    if(window.db){
+      carregarPistolasComFallback();
+    }
     fecharEditarPistola();
     filtrarPistolasComFiltros();
     mostrarMensagem(isNovaPistola ? "Pistola adicionada com sucesso." : "Pistola atualizada com sucesso.");
@@ -4352,6 +4370,9 @@ async function apagarPistola(ref) {
     const idx = idxPorRef(pistolasData, ref);
     if (idx >= 0) pistolasData.splice(idx, 1);
     guardarPistolasLocal();
+    if(window.db){
+      carregarPistolasComFallback();
+    }
     filtrarPistolasComFiltros();
     mostrarMensagem("Pistola apagada com sucesso.");
   } catch (e) {
@@ -5203,85 +5224,4 @@ window.addEventListener("DOMContentLoaded", () => {
 })();
 
 
-/* =========================
-   FIREBASE REALTIME SYNC
-========================= */
-
-async function syncCollection(collectionName, localData) {
-  const snapshot = await db.collection(collectionName).get();
-
-  if (snapshot.empty) {
-    for (const item of localData) {
-      await db.collection(collectionName).add(item);
-    }
-    console.log(collectionName + " migrado para Firebase");
-  }
-}
-
-async function iniciarRealtimeSync() {
-
-  try {
-
-    await syncCollection("portas", portasData || []);
-    await syncCollection("pistolas", pistolasData || []);
-    await syncCollection("users", usersData || []);
-
-    db.collection("portas").onSnapshot((snapshot) => {
-
-      portasData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-
-      if (typeof renderPortas === "function") {
-        renderPortas();
-      }
-
-      if (typeof filtrarPortasComEstado === "function") {
-        filtrarPortasComEstado();
-      }
-    });
-
-    db.collection("pistolas").onSnapshot((snapshot) => {
-
-      pistolasData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-
-      if (typeof renderPistolas === "function") {
-        renderPistolas();
-      }
-
-      if (typeof filtrarPistolasComFiltros === "function") {
-        filtrarPistolasComFiltros();
-      }
-    });
-
-    db.collection("users").onSnapshot((snapshot) => {
-
-      usersData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-
-      if (typeof renderUsers === "function") {
-        renderUsers();
-      }
-
-      if (typeof filtrarUsersComFiltros === "function") {
-        filtrarUsersComFiltros();
-      }
-    });
-
-    console.log("Realtime Firebase ativo");
-
-  } catch (e) {
-    console.error("Erro realtime:", e);
-  }
-}
-
-setTimeout(() => {
-  iniciarRealtimeSync();
-}, 1000);
-
+console.log("Realtime Firebase ativo");
