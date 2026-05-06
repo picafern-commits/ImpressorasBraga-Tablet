@@ -40,7 +40,7 @@ function renderPortas(){
   });
 }
 
-async function adicionarPorta(){
+async async function adicionarPorta(){
   const porta = prompt("Porta:");
   if(!porta) return;
 
@@ -64,7 +64,7 @@ async function editarPorta(id){
     });
 }
 
-async function apagarPorta(id){
+async async function apagarPorta(id){
   await db.collection("portas")
     .doc(id)
     .delete();
@@ -109,7 +109,7 @@ function renderPistolas(){
   });
 }
 
-async function adicionarPistola(){
+async async function adicionarPistola(){
 
   const nome = prompt("Nome da pistola:");
   if(!nome) return;
@@ -134,7 +134,7 @@ async function editarPistola(id){
     });
 }
 
-async function apagarPistola(id){
+async async function apagarPistola(id){
 
   await db.collection("pistolas")
     .doc(id)
@@ -179,7 +179,7 @@ function renderUsers(){
   });
 }
 
-async function adicionarUser(){
+async async function adicionarUser(){
 
   const nome = prompt("Nome:");
   if(!nome) return;
@@ -203,7 +203,7 @@ async function editarUser(id){
     });
 }
 
-async function apagarUser(id){
+async async function apagarUser(id){
 
   await db.collection("users")
     .doc(id)
