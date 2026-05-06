@@ -10,6 +10,7 @@ if (!firebase.apps.length) {
 }
 const db = firebase.firestore();
 
+
 const BACKUP_KEYS_APP_BRAGA = {
   stock: "appBraga_backup_stock",
   historico: "appBraga_backup_historico",
